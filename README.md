@@ -1,20 +1,36 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# GalaxyMart SaaS
 
-# Run and deploy your AI Studio app
+A premium SaaS platform for modern businesses.
 
-This contains everything you need to run your app locally.
+## Features
+- Modern, responsive design
+- Integrated crypto payments (Litecoin)
+- Premium UI with glassmorphism and smooth animations
 
-View your app in AI Studio: https://ai.studio/apps/48ece437-fecf-418f-bf29-06ca42823253
+## Getting Started
 
-## Run Locally
+### Prerequisites
+- Node.js (v18+)
+- NPM or Yarn
 
-**Prerequisites:**  Node.js
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/solvfpz/galaxymart-saas.git
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   Copy `.env.example` to `.env` and fill in your keys.
+   ```bash
+   cp .env.example .env
+   ```
+4. Run the development server:
+   ```bash
+   npm run dev
+   ```
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## License
+MIT
