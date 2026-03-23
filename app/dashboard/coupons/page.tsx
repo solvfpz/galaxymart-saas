@@ -56,7 +56,7 @@ export default function CouponsPage() {
         fetchCoupons();
       } else {
         const error = await res.json();
-        toast.error(error.error || 'Operation failed');
+        toast.error(error.message || 'Operation failed');
       }
     } catch (err) {
       toast.error('Connection error');

@@ -9,8 +9,8 @@ export default async function Page() {
 
   try {
     await dbConnect();
-    // Fetch products from database
-    products = await Product.find({}).sort({ createdAt: -1 }).lean();
+    // Fetch public products from database
+    products = await Product.find({ visibility: 'Public' }).sort({ createdAt: -1 }).lean();
     
     // Serialize ObjectIds to strings
     products = products.map((p) => ({

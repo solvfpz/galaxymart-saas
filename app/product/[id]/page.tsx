@@ -10,7 +10,7 @@ export default async function Page() {
   try {
     await dbConnect();
     // Fetch products
-    products = await Product.find({}).lean();
+    products = await Product.find({ visibility: { $in: ['Public', 'Unlisted'] } }).lean();
     
     // Serialize
     products = products.map((p) => ({

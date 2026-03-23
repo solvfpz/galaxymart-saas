@@ -1,6 +1,19 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    await dbConnect();
+    const { id } = await params;
+    const order = await Order.findById(id).populate('productId');
+    if (!order) return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+    return NextResponse.json({ success: true, order });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, message: "Error fetching order" }, { status: 500 });
+  }
+}
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {

@@ -39,8 +39,16 @@ export async function POST(req: Request) {
       name: body.name,
       price: body.price,
       description: body.description,
+      instructions: body.instructions || '',
       image: body.image,
-      duration: duration
+      duration: duration,
+      deliverableType: body.deliverableType || 'Serials',
+      serials: body.serials || [],
+      webhookUrl: body.webhookUrl || '',
+      stock: body.stock || 0,
+      deliveryMethod: body.deliveryMethod || 'Random',
+      visibility: body.visibility || 'Public',
+      currency: body.currency || 'USD'
     };
 
     const product = await Product.create(productPayload);

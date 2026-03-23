@@ -36,8 +36,12 @@ import {
   Command,
   Maximize2,
   Sun,
-  Moon
+  Moon,
+  Tag,
+  Loader2,
+  Package
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -318,10 +322,24 @@ const ProductCard = ({ product, index }: any) => {
     setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
   };
 
+  const currencySymbol = product.currency === 'EUR' ? '€' : '$';
   const displayPrice = typeof product.price === 'number'
-    ? `$${product.price.toFixed(2)}`
+    ? `${currencySymbol}${product.price.toFixed(2)}`
     : product.price;
   const displayDuration = product.duration || 'Lifetime';
+  const [stock, setStock] = useState(product.stock || 0);
+
+  useEffect(() => {
+    const pollStock = async () => {
+      try {
+        const res = await fetch(`/api/products/${product._id || product.id}`);
+        const data = await res.json();
+        if (data.success) setStock(data.product.stock);
+      } catch (err) {}
+    };
+    const interval = setInterval(pollStock, 10000);
+    return () => clearInterval(interval);
+  }, [product]);
 
   return (
     <motion.div
@@ -355,9 +373,18 @@ const ProductCard = ({ product, index }: any) => {
             </div>
           </div>
           <h3 className="text-lg font-bold text-white mb-1">{product.name}</h3>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-brand-primary">{displayPrice}</span>
-            <span className="text-zinc-500 text-[10px] font-medium uppercase tracking-wider">/ {displayDuration}</span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-brand-primary">{displayPrice}</span>
+              <span className="text-zinc-500 text-[10px] font-medium uppercase tracking-wider">/ {displayDuration}</span>
+            </div>
+            {stock > 0 && (
+              stock < 10 ? (
+                <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest animate-pulse">Only {stock} left!</span>
+              ) : (
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{stock} items left</span>
+              )
+            )}
           </div>
         </div>
         
@@ -370,18 +397,32 @@ const ProductCard = ({ product, index }: any) => {
           ))}
         </ul>
 
-        <div className="mt-auto space-y-6">
+        <div className="mt-auto space-y-4 text-center">
           <button
             onClick={() => router.push(`/product/${product.id ?? product._id}`)}
-            className="w-full py-2 rounded-lg bg-white/5 hover:bg-brand-primary text-white text-[12px] font-bold transition-all duration-300 border border-white/10 hover:border-brand-primary hover:shadow-lg hover:shadow-brand-primary/20"
+            disabled={stock === 0}
+            className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-brand-primary text-white text-[12px] font-bold transition-all duration-300 border border-white/10 hover:border-brand-primary hover:shadow-lg hover:shadow-brand-primary/20 disabled:opacity-30 disabled:grayscale disabled:hover:bg-white/5 disabled:hover:border-white/10"
           >
-            Purchase Now
+            {stock === 0 ? 'Not Available' : 'Purchase Now'}
           </button>
-          <div className="flex items-center justify-end pt-4 border-t border-white/5">
-            <div className="flex gap-1.5">
+          
+          <AnimatePresence>
+            {stock === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]"
+              >
+                Out of Stock
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex items-center justify-center pt-4 border-t border-white/5">
+            <div className="flex gap-1.5 opacity-50">
               <div className="w-1 h-1 rounded-full bg-zinc-800" />
               <div className="w-1 h-1 rounded-full bg-zinc-800" />
-              <div className="w-1 h-1 rounded-full bg-brand-primary/40" />
+              <div className={`w-1 h-1 rounded-full ${stock === 0 ? 'bg-red-500/40' : 'bg-brand-primary/40'}`} />
             </div>
           </div>
         </div>
@@ -447,8 +488,28 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('crypto');
   const [showToast, setShowToast] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   
   const product = (dbProducts || []).find((p: any) => p._id === id || p.id === id);
+  const [liveStock, setLiveStock] = useState(product?.stock || 0);
+
+  useEffect(() => {
+    if (!product) return;
+    const pollStock = async () => {
+      try {
+        const res = await fetch(`/api/products/${product?._id || product?.id}`);
+        const data = await res.json();
+        if (data.success) setLiveStock(data.product.stock);
+      } catch (err) {}
+    };
+    const interval = setInterval(pollStock, 5000);
+    return () => clearInterval(interval);
+  }, [product]);
 
   useEffect(() => {
     if (showToast) {
@@ -456,6 +517,68 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
       return () => clearTimeout(timer);
     }
   }, [showToast]);
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setIsApplyingCoupon(true);
+    setCouponError('');
+    
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode }),
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        setAppliedCoupon(data.coupon);
+        setCouponCode('');
+      } else {
+        setCouponError(data.message || 'Invalid coupon code');
+      }
+    } catch (err) {
+      setCouponError('Failed to validate coupon');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!customerEmail.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    
+    setIsProcessingOrder(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product._id || product.id,
+          customerEmail,
+          amount: Number(totalPrice),
+          status: 'confirmed' // Simulate successful payment for now
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success('Order placed successfully!');
+        setLiveStock((prev: number) => Math.max(0, prev - 1));
+        const orderId = data._id || data.id;
+        router.push(`/invoice/${orderId}`);
+      } else {
+        toast.error('Failed to create order');
+      }
+    } catch (err) {
+      toast.error('Transaction failed');
+    } finally {
+      setIsProcessingOrder(false);
+    }
+  };
 
   if (!product) {
     return (
@@ -466,8 +589,11 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
     );
   }
 
-  const numericPrice = typeof product.price === 'number' ? product.price : parseFloat(product.price.replace('$', ''));
-  const totalPrice = (numericPrice * quantity).toFixed(2);
+  const currencySymbol = product.currency === 'EUR' ? '€' : '$';
+  const numericPrice = typeof product.price === 'number' ? product.price : parseFloat(product.price.replace(/[^\d.]/g, ''));
+  const subtotal = numericPrice * quantity;
+  const discountAmount = appliedCoupon ? (subtotal * (appliedCoupon.discount / 100)) : 0;
+  const totalPrice = (subtotal - discountAmount).toFixed(2);
 
   return (
     <motion.div 
@@ -518,7 +644,7 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                   </div>
                   <div className="flex items-baseline gap-2">
                     <div className="text-2xl font-bold tracking-tight text-white">
-                      {typeof product.price === 'number' ? `$${product.price.toFixed(2)}` : product.price}
+                      {typeof product.price === 'number' ? `${currencySymbol}${product.price.toFixed(2)}` : product.price}
                     </div>
                     <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">incl. taxes</div>
                   </div>
@@ -534,15 +660,23 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                   <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-primary/10 blur-[60px] rounded-full"></div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-3">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">{product.stock || 99} In stock</span>
-                  </div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-xl">
-                    <Lock className="w-3 h-3 text-zinc-500" />
-                    <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">Secure checkout</span>
-                  </div>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {liveStock === 0 ? (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-red-500/10 bg-red-500/5 px-4 py-2 backdrop-blur-xl">
+                      <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Out of Stock</span>
+                    </div>
+                  ) : liveStock < 10 ? (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-red-400/10 bg-red-400/5 px-4 py-2 backdrop-blur-xl">
+                      <span className="h-2 w-2 rounded-full bg-red-400"></span>
+                      <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Only {liveStock} left!</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-500/10 bg-zinc-500/5 px-4 py-2 backdrop-blur-xl">
+                      <span className="h-2 w-2 rounded-full bg-zinc-500"></span>
+                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{liveStock} items left</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -614,12 +748,57 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                   </div>
                 </div>
 
+                {/* Coupon Code Section */}
+                <div className="mb-8">
+                  <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Coupon Code</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                      placeholder="Enter code"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors"
+                      disabled={isApplyingCoupon || !!appliedCoupon}
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={isApplyingCoupon || !couponCode.trim() || !!appliedCoupon}
+                      className="px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                    >
+                      {isApplyingCoupon ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                  {couponError && <p className="mt-2 text-[10px] text-red-400 font-medium">{couponError}</p>}
+                  {appliedCoupon && (
+                    <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-3 h-3" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">
+                          {appliedCoupon.code} applied! (-{appliedCoupon.discount}%)
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => setAppliedCoupon(null)}
+                        className="p-1 hover:bg-white/5 rounded-full transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Summary Rows */}
                 <div className="space-y-3 mb-8">
                   <div className="flex items-center justify-between text-xs">
                     <div className="text-zinc-500 font-medium">Subtotal</div>
-                    <div className="font-bold text-white">${totalPrice}</div>
+                    <div className="font-bold text-white">{currencySymbol}{subtotal.toFixed(2)}</div>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="text-emerald-400 font-medium">Discount ({appliedCoupon.discount}%)</div>
+                      <div className="font-bold text-emerald-400">-{currencySymbol}{discountAmount.toFixed(2)}</div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs">
                     <div className="text-zinc-500 font-medium">Processing Fee</div>
                     <div className="font-bold text-emerald-400">Free</div>
@@ -629,18 +808,44 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                       <div className="text-sm font-bold text-white">Total</div>
                       <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Taxes included</div>
                     </div>
-                    <div className="text-xl font-bold tracking-tight text-white">${totalPrice}</div>
+                    <div className="text-xl font-bold tracking-tight text-white">{currencySymbol}{totalPrice}</div>
                   </div>
+                </div>
+
+                {/* Email Section */}
+                <div className="mb-8">
+                  <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Customer Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors mb-2"
+                  />
+                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Delivery details will be sent here</p>
                 </div>
 
                 {/* Buy Button */}
                 <button
-                  onClick={() => setShowToast(true)}
-                  className="group relative w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-4 text-sm font-bold text-white shadow-xl shadow-brand-primary/20 transition-all duration-300 hover:bg-brand-secondary active:scale-[0.98] overflow-hidden"
+                  onClick={handlePurchase}
+                  disabled={isProcessingOrder || liveStock === 0}
+                  className="group relative w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-4 text-sm font-bold text-white shadow-xl shadow-brand-primary/20 transition-all duration-300 hover:bg-brand-secondary active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:grayscale"
                 >
                   <div className="relative z-10 flex items-center justify-center gap-2">
-                    <ShoppingBag className="w-4 h-4" />
-                    Buy Now
+                    {isProcessingOrder ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : liveStock === 0 ? (
+                      <>
+                        <Package className="w-4 h-4 opacity-50" />
+                        Out of Stock
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingBag className="w-4 h-4" />
+                        Buy Now
+                      </>
+                    )}
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                 </button>

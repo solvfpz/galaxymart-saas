@@ -14,7 +14,7 @@ export async function GET() {
     }
     
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
-    return NextResponse.json(coupons);
+    return NextResponse.json({ success: true, coupons });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: "Error fetching coupons" }, { status: 500 });
   }
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     if (!body) return NextResponse.json({ success: false, message: 'Invalid payload' }, { status: 400 });
 
     const coupon = await Coupon.create(body);
-    return NextResponse.json(coupon, { status: 201 });
+    return NextResponse.json({ success: true, coupon }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: "Error creating coupon" }, { status: 500 });
   }
