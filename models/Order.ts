@@ -5,6 +5,12 @@ export interface IOrder extends Document {
   customerEmail: string;
   status: 'pending' | 'confirmed';
   amount: number;
+  usdAmount: number;
+  ltcAmount: number;
+  ltcPriceAtTime: number;
+  paymentId: string;
+  walletAddress: string;
+  expiresAt: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -15,6 +21,12 @@ const OrderSchema: Schema = new Schema(
     customerEmail: { type: String, required: true },
     status: { type: String, enum: ['pending', 'confirmed'], default: 'pending' },
     amount: { type: Number, required: true },
+    usdAmount: { type: Number, required: true },
+    ltcAmount: { type: Number, required: true },
+    ltcPriceAtTime: { type: Number, required: true },
+    paymentId: { type: String, required: true, unique: true },
+    walletAddress: { type: String, required: true },
+    expiresAt: { type: Date, required: true },
   },
   { timestamps: true }
 );

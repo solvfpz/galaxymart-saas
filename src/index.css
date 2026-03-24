@@ -35,3 +35,12 @@
   @apply bg-slate-800 rounded-full hover:bg-slate-700 transition-colors;
 }
 
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+

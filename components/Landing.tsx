@@ -39,7 +39,9 @@ import {
   Moon,
   Tag,
   Loader2,
-  Package
+  Package,
+  Clock,
+  Copy
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
@@ -482,18 +484,355 @@ const Products = ({ dbProducts }: { dbProducts?: any[] }) => {
   );
 };
 
+const Timer = ({ expiresAt, onExpire }: { expiresAt: string, onExpire: () => void }) => {
+  const [timeLeft, setTimeLeft] = useState<string>('');
+
+  useEffect(() => {
+    const calculateTime = () => {
+      const difference = new Date(expiresAt).getTime() - new Date().getTime();
+      if (difference <= 0) {
+        onExpire();
+        return '00:00';
+      }
+      const minutes = Math.floor((difference / 1000 / 60) % 60);
+      const seconds = Math.floor((difference / 1000) % 60);
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    setTimeLeft(calculateTime());
+    const interval = setInterval(() => {
+      setTimeLeft(calculateTime());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [expiresAt, onExpire]);
+
+  return <span className="font-mono tabular-nums">{timeLeft}</span>;
+};
+
+const CopyButton = ({ text, label }: { text: string, label: string }) => {
+  const copy = () => {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} copied!`, {
+      style: { background: 'rgba(24, 24, 27, 0.9)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
+    });
+  };
+  return (
+    <button onClick={copy} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-white/40 hover:text-white">
+      <Copy size={16} />
+    </button>
+  );
+};
+
+const QRView = ({ address }: { address: string }) => {
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${address}&bgcolor=18181b&color=ffffff&margin=10`;
+  return (
+    <div className="relative group p-4 rounded-3xl bg-white/5 border border-white/5 flex items-center justify-center">
+      <div className="absolute inset-0 bg-blue-500/10 blur-2xl group-hover:bg-blue-500/20 transition-all rounded-full" />
+      <img src={qrUrl} alt="QR Code" className="relative z-10 w-32 h-32 rounded-xl" />
+    </div>
+  );
+};
+
+const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => void, onComplete: () => void }) => {
+  const [status, setStatus] = useState<'pending' | 'confirming' | 'confirmed' | 'expired'>('pending');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const checkStatus = async () => {
+    try {
+      const res = await fetch(`/api/payments/verify?paymentId=${data.paymentId}`);
+      const result = await res.json();
+      if (result.status === 'confirmed') {
+        setStatus('confirmed');
+        setTimeout(() => onComplete(), 4000);
+      } else if (result.status === 'expired') {
+        setStatus('expired');
+      } else if (result.status === 'confirming') {
+        setStatus('confirming');
+      }
+    } catch (err) {
+      console.error('Verify error:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (status === 'confirmed' || status === 'expired') return;
+    const interval = setInterval(checkStatus, 7000);
+    return () => clearInterval(interval);
+  }, [data.paymentId, status]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await checkStatus();
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
+
+  const steps = [
+    { label: 'Waiting for Payment',    activeOn: ['pending'] },
+    { label: 'Transaction Detected',   activeOn: ['confirming'] },
+    { label: 'Confirming on Blockchain', activeOn: [] },
+    { label: 'Payment Confirmed',      activeOn: ['confirmed'] },
+  ];
+
+  const getStepState = (idx: number) => {
+    if (status === 'confirmed') return idx <= 3 ? 'done' : 'idle';
+    if (status === 'confirming') return idx === 1 ? 'active' : idx < 1 ? 'done' : 'idle';
+    if (status === 'pending') return idx === 0 ? 'active' : 'idle';
+    return 'idle';
+  };
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.walletAddress || 'ltc1')}&bgcolor=111111&color=ffffff&margin=10`;
+
+  return (
+    <div className="w-full max-w-5xl mx-auto px-2 py-6">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/40">
+            <Bitcoin size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-tight">Complete Your Payment</p>
+            <p className="text-zinc-500 text-xs">Secure crypto checkout</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Secure</span>
+        </div>
+      </div>
+
+      {/* ── 2-Column Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* ════ LEFT COLUMN ════ */}
+        <div className="space-y-3">
+
+          {/* Invoice Card */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Invoice</span>
+              <span className="text-[10px] font-bold text-blue-400">{data.paymentId || '—'}</span>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: 'Product',     value: data.productName || '—',              icon: false },
+                { label: 'Email',       value: data.email || data.customerEmail || '—', icon: false },
+                { label: 'Total (USD)', value: `$${data.usdAmount ?? '—'}`,           icon: false },
+                { label: 'Coin',        value: 'Litecoin (LTC)',                      icon: true  },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between">
+                  <span className="text-zinc-500 text-sm">{row.label}</span>
+                  <span className="text-white text-sm font-semibold flex items-center gap-1.5">
+                    {row.icon && <Bitcoin size={11} className="text-zinc-500" />}
+                    {row.value}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Send Exactly Card */}
+          <div className="rounded-2xl border border-blue-500/25 bg-[#0a1628]/90 backdrop-blur-xl p-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Send Exactly</span>
+              {data.ltcPriceAtTime && (
+                <span className="text-[10px] text-zinc-500">
+                  ● 1 LTC = ${Number(data.ltcPriceAtTime).toFixed(2)}
+                </span>
+              )}
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-[2.4rem] font-black text-white tracking-tighter tabular-nums leading-none">
+                {data.ltcAmount ?? '—'}
+              </span>
+              <span className="text-blue-400 font-black text-base uppercase">LTC</span>
+            </div>
+            <p className="text-zinc-500 text-xs mt-2">≈ ${data.usdAmount} USD at current rate</p>
+          </div>
+
+          {/* Wallet Address Card */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block mb-3">Wallet Address</span>
+            <div className="flex items-center gap-3 bg-zinc-950 border border-white/[0.05] rounded-xl px-4 py-3">
+              <span className="text-zinc-300 text-xs font-mono flex-1 truncate">
+                {data.walletAddress || 'No address'}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(data.walletAddress || '');
+                  toast.success('Address copied!', {
+                    style: { background: '#18181b', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }
+                  });
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-xs font-bold transition-all active:scale-95 shrink-0"
+              >
+                <Copy size={11} />
+                Copy
+              </button>
+            </div>
+          </div>
+
+          {/* Timer Row */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl px-5 py-3.5 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock size={14} className={status === 'expired' ? 'text-red-400' : 'text-blue-400'} />
+              <span className="text-zinc-400 text-sm">
+                {status === 'expired' ? 'Invoice expired' : 'Payment expires in'}
+              </span>
+            </div>
+            <span className={`text-base font-black tabular-nums font-mono ${status === 'expired' ? 'text-red-400' : 'text-white'}`}>
+              {data.expiresAt
+                ? <Timer expiresAt={data.expiresAt} onExpire={() => setStatus('expired')} />
+                : '—'}
+            </span>
+          </div>
+
+          {/* Back */}
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group pt-2 pl-1"
+          >
+            <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+            Back to Store
+          </button>
+        </div>
+
+        {/* ════ RIGHT COLUMN ════ */}
+        <div className="space-y-3">
+
+          {/* QR Card */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-6 flex flex-col items-center gap-4">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Scan to Pay</span>
+            <div className="bg-white rounded-2xl p-3 shadow-[0_0_40px_rgba(59,130,246,0.15)]">
+              <img src={qrUrl} alt="QR Code" className="w-44 h-44 rounded-xl block" />
+            </div>
+            <div className="flex items-center gap-1.5 text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
+              <Bitcoin size={10} />
+              Litecoin QR
+            </div>
+          </div>
+
+          {/* Payment Status Card */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block mb-4">Payment Status</span>
+
+            <div className="space-y-1">
+              {steps.map((step, idx) => {
+                const state = getStepState(idx);
+                return (
+                  <div key={idx} className="flex items-center gap-3 py-2">
+                    {/* Circle */}
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-all duration-500 ${
+                      state === 'done'
+                        ? 'bg-emerald-500/15 border border-emerald-500/40'
+                        : state === 'active'
+                        ? 'bg-blue-500/20 border border-blue-500/50'
+                        : 'bg-zinc-900 border border-zinc-700/60'
+                    }`}>
+                      {state === 'done' ? (
+                        <CheckCircle2 size={13} className="text-emerald-400" />
+                      ) : state === 'active' ? (
+                        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1.4, ease: 'linear' }}>
+                          <Loader2 size={13} className="text-blue-400" />
+                        </motion.div>
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-zinc-700" />
+                      )}
+                    </div>
+                    {/* Label */}
+                    <span className={`text-sm transition-colors ${
+                      state === 'done' ? 'text-emerald-400 font-semibold'
+                      : state === 'active' ? 'text-white font-bold'
+                      : 'text-zinc-600 font-medium'
+                    }`}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing || status === 'confirmed' || status === 'expired'}
+              className="mt-4 w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 border border-white/[0.07] text-zinc-300 hover:text-white text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <motion.div
+                animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
+                transition={isRefreshing ? { repeat: Infinity, duration: 0.7, ease: 'linear' } : {}}
+              >
+                <Loader2 size={13} />
+              </motion.div>
+              Refresh Status
+            </button>
+          </div>
+
+          {/* Footer Note */}
+          <p className="text-zinc-600 text-xs leading-relaxed px-1 pt-1">
+            Your order will automatically be processed once the blockchain confirms the transaction.{' '}
+            <span className="text-blue-500/80">This usually takes 2–5 minutes.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SuccessPage = ({ onBack }: { onBack: () => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="min-h-screen pt-32 pb-24 px-4 bg-black flex flex-col items-center justify-center text-center"
+    >
+      <div className="relative mb-12">
+        <div className="absolute inset-0 bg-blue-500/20 blur-[100px] rounded-full" />
+        <motion.div 
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.2 }}
+          className="relative z-10 w-32 h-32 rounded-full bg-blue-600 flex items-center justify-center shadow-[0_0_50px_rgba(37,99,235,0.5)]"
+        >
+          <CheckCircle2 className="w-16 h-16 text-white" />
+        </motion.div>
+      </div>
+      
+      <h1 className="text-6xl font-black italic uppercase tracking-tighter text-white mb-6">Payment Secured</h1>
+      <p className="text-zinc-500 text-lg font-medium max-w-md mx-auto mb-12 leading-relaxed">
+        Your high-performance boosts are being provisioned. A confirmation protocol has been sent to your terminal.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md mx-auto">
+        <button 
+          onClick={onBack}
+          className="px-8 py-4 bg-zinc-900 border border-white/5 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-zinc-800 transition-all active:scale-95"
+        >
+          Back to Store
+        </button>
+        <button 
+          className="px-8 py-4 bg-blue-600 rounded-[2rem] text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-blue-500 shadow-xl shadow-blue-500/20 transition-all active:scale-95"
+        >
+          View Dashboard
+        </button>
+      </div>
+    </motion.div>
+  );
+};
+
 export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
   const { id } = useParams() as { id: string };
   const router = useRouter();
   const [quantity, setQuantity] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState('crypto');
-  const [showToast, setShowToast] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
   const [couponError, setCouponError] = useState('');
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [customerEmail, setCustomerEmail] = useState('');
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [invoiceData, setInvoiceData] = useState<any>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
   
   const product = (dbProducts || []).find((p: any) => p._id === id || p.id === id);
   const [liveStock, setLiveStock] = useState(product?.stock || 0);
@@ -510,13 +849,6 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
     const interval = setInterval(pollStock, 5000);
     return () => clearInterval(interval);
   }, [product]);
-
-  useEffect(() => {
-    if (showToast) {
-      const timer = setTimeout(() => setShowToast(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [showToast]);
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -535,11 +867,14 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
       if (res.ok && data.success) {
         setAppliedCoupon(data.coupon);
         setCouponCode('');
+        toast.success(`Coupon applied: ${data.coupon.discount}% off!`);
       } else {
         setCouponError(data.message || 'Invalid coupon code');
+        toast.error(data.message || 'Invalid coupon code');
       }
     } catch (err) {
       setCouponError('Failed to validate coupon');
+      toast.error('Validation error');
     } finally {
       setIsApplyingCoupon(false);
     }
@@ -553,28 +888,30 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
     
     setIsProcessingOrder(true);
     try {
-      const res = await fetch('/api/orders', {
+      const res = await fetch('/api/payments/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId: product._id || product.id,
-          customerEmail,
-          amount: Number(totalPrice),
-          status: 'confirmed' // Simulate successful payment for now
+          productDetails: {
+            name: product.name,
+            price: product.price,
+            quantity: quantity,
+            email: customerEmail,
+            coupon: appliedCoupon?.code || ''
+          }
         }),
       });
 
       const data = await res.json();
-      if (res.ok) {
-        toast.success('Order placed successfully!');
-        setLiveStock((prev: number) => Math.max(0, prev - 1));
-        const orderId = data._id || data.id;
-        router.push(`/invoice/${orderId}`);
+      if (res.ok && data.success) {
+        setInvoiceData(data);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        toast.error('Failed to create order');
+        toast.error(data.message || 'Failed to initialize payment');
       }
     } catch (err) {
-      toast.error('Transaction failed');
+      toast.error('System error. Please try again.');
     } finally {
       setIsProcessingOrder(false);
     }
@@ -587,6 +924,10 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
         <button onClick={() => router.push('/')} className="px-6 py-2 bg-brand-primary rounded-full text-white">Go Back</button>
       </div>
     );
+  }
+
+  if (isSuccess) {
+    return <SuccessPage onBack={() => { setIsSuccess(false); setInvoiceData(null); router.push('/'); }} />;
   }
 
   const currencySymbol = product.currency === 'EUR' ? '€' : '$';
@@ -604,11 +945,14 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
     >
       {/* Back / Continue Shopping Button at Top Left */}
       <button 
-        onClick={() => router.push('/')}
+        onClick={() => {
+          if (invoiceData) setInvoiceData(null);
+          else router.push('/');
+        }}
         className="absolute top-6 left-4 sm:top-8 sm:left-8 flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white transition-all group backdrop-blur-md z-50 shadow-sm"
       >
         <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-sm font-medium">Continue Shopping</span>
+        <span className="text-sm font-medium">{invoiceData ? 'Cancel Payment' : 'Continue Shopping'}</span>
       </button>
 
       <main className="mx-auto w-full max-w-7xl">
@@ -619,8 +963,8 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
               <span className="text-sm font-bold tracking-tight text-white">GB</span>
             </div>
             <div>
-              <div className="text-sm font-semibold text-white">Checkout</div>
-              <div className="text-xs text-zinc-500">Secure purchase</div>
+              <div className="text-sm font-semibold text-white">{invoiceData ? 'Payment Invoice' : 'Checkout'}</div>
+              <div className="text-xs text-zinc-500">{invoiceData ? 'Secure Litecoin Gateway' : 'Secure purchase'}</div>
             </div>
           </div>
 
@@ -630,255 +974,238 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
           </div>
         </div>
 
-        <section className="grid gap-8 lg:grid-cols-12 items-start">
-          {/* Left: Product Info */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="rounded-3xl border border-white/10 bg-zinc-900/40 shadow-sm backdrop-blur-xl overflow-hidden">
-              <div className="p-6 sm:p-8">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
-                  <div>
-                    <h1 className="font-display text-2xl font-bold tracking-tight text-white">{product.name}</h1>
-                    <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
-                      {(product.perks || [product.description]).join(" • ")}. High-quality service with instant delivery guaranteed.
-                    </p>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-2xl font-bold tracking-tight text-white">
-                      {typeof product.price === 'number' ? `${currencySymbol}${product.price.toFixed(2)}` : product.price}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">incl. taxes</div>
-                  </div>
-                </div>
-
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5 group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/10 to-transparent"></div>
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    className="h-full w-full object-contain p-8 relative z-10 transition-transform duration-700 group-hover:scale-105"
-                  />
-                  <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-primary/10 blur-[60px] rounded-full"></div>
-                </div>
-
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  {liveStock === 0 ? (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-red-500/10 bg-red-500/5 px-4 py-2 backdrop-blur-xl">
-                      <span className="h-2 w-2 rounded-full bg-red-500"></span>
-                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Out of Stock</span>
-                    </div>
-                  ) : liveStock < 10 ? (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-red-400/10 bg-red-400/5 px-4 py-2 backdrop-blur-xl">
-                      <span className="h-2 w-2 rounded-full bg-red-400"></span>
-                      <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Only {liveStock} left!</span>
-                    </div>
-                  ) : (
-                    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-500/10 bg-zinc-500/5 px-4 py-2 backdrop-blur-xl">
-                      <span className="h-2 w-2 rounded-full bg-zinc-500"></span>
-                      <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{liveStock} items left</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Right: Checkout Panel */}
-          <div className="lg:col-span-5">
-            <div className="sticky top-24 rounded-3xl border border-white/10 bg-zinc-900/40 shadow-sm backdrop-blur-xl">
-              <div className="p-6 sm:p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-sm font-bold text-white uppercase tracking-widest opacity-50">Order Summary</h2>
-                  <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
-                    <Lock className="w-3 h-3" />
-                    Secure
-                  </div>
-                </div>
-
-                {/* Quantity */}
-                <div className="mb-8">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="text-xs font-bold text-white uppercase tracking-widest">Quantity</div>
-                    <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Max 10</div>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-xl">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 active:scale-90 transition-all disabled:opacity-50 shadow-sm"
-                      disabled={quantity <= 1}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-
-                    <div className="text-sm font-bold text-white">{quantity}</div>
-
-                    <button
-                      onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 active:scale-90 transition-all disabled:opacity-50 shadow-sm"
-                      disabled={quantity >= 10}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Payment Method */}
-                <div className="mb-8">
-                  <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Payment Method</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'crypto', icon: <Bitcoin className="w-4 h-4" />, label: 'Crypto' },
-                      { id: 'card', icon: <CreditCard className="w-4 h-4" />, label: 'Card' },
-                      { id: 'wallet', icon: <Wallet className="w-4 h-4" />, label: 'Wallet' }
-                    ].map((method) => (
-                      <button
-                        key={method.id}
-                        onClick={() => setPaymentMethod(method.id)}
-                        className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border transition-all duration-300 ${
-                          paymentMethod === method.id 
-                            ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' 
-                            : 'bg-white/5 border-white/10 text-zinc-500 hover:border-white/20'
-                        }`}
-                      >
-                        {method.icon}
-                        <span className="text-[8px] font-bold uppercase tracking-wider">{method.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Coupon Code Section */}
-                <div className="mb-8">
-                  <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Coupon Code</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      placeholder="Enter code"
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors"
-                      disabled={isApplyingCoupon || !!appliedCoupon}
-                    />
-                    <button
-                      onClick={handleApplyCoupon}
-                      disabled={isApplyingCoupon || !couponCode.trim() || !!appliedCoupon}
-                      className="px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold hover:bg-zinc-700 transition-colors disabled:opacity-50"
-                    >
-                      {isApplyingCoupon ? '...' : 'Apply'}
-                    </button>
-                  </div>
-                  {couponError && <p className="mt-2 text-[10px] text-red-400 font-medium">{couponError}</p>}
-                  {appliedCoupon && (
-                    <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                      <div className="flex items-center gap-2">
-                        <Tag className="w-3 h-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">
-                          {appliedCoupon.code} applied! (-{appliedCoupon.discount}%)
-                        </span>
-                      </div>
-                      <button 
-                        onClick={() => setAppliedCoupon(null)}
-                        className="p-1 hover:bg-white/5 rounded-full transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Summary Rows */}
-                <div className="space-y-3 mb-8">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="text-zinc-500 font-medium">Subtotal</div>
-                    <div className="font-bold text-white">{currencySymbol}{subtotal.toFixed(2)}</div>
-                  </div>
-                  {appliedCoupon && (
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="text-emerald-400 font-medium">Discount ({appliedCoupon.discount}%)</div>
-                      <div className="font-bold text-emerald-400">-{currencySymbol}{discountAmount.toFixed(2)}</div>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="text-zinc-500 font-medium">Processing Fee</div>
-                    <div className="font-bold text-emerald-400">Free</div>
-                  </div>
-                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+        {invoiceData ? (
+          <InvoiceView 
+            data={invoiceData} 
+            onBack={() => setInvoiceData(null)} 
+            onComplete={() => setIsSuccess(true)}
+          />
+        ) : (
+          <section className="grid gap-8 lg:grid-cols-12 items-start">
+            {/* Left: Product Info */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="rounded-3xl border border-white/10 bg-zinc-900/40 shadow-sm backdrop-blur-xl overflow-hidden">
+                <div className="p-6 sm:p-8">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
                     <div>
-                      <div className="text-sm font-bold text-white">Total</div>
-                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Taxes included</div>
+                      <h1 className="font-display text-2xl font-bold tracking-tight text-white">{product.name}</h1>
+                      <p className="mt-2 text-sm text-zinc-400 leading-relaxed">
+                        {(product.perks || [product.description]).join(" • ")}. High-quality service with instant delivery guaranteed.
+                      </p>
                     </div>
-                    <div className="text-xl font-bold tracking-tight text-white">{currencySymbol}{totalPrice}</div>
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-2xl font-bold tracking-tight text-white">
+                        {typeof product.price === 'number' ? `${currencySymbol}${product.price.toFixed(2)}` : product.price}
+                      </div>
+                      <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">incl. taxes</div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Email Section */}
-                <div className="mb-8">
-                  <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Customer Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="Enter your email"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors mb-2"
-                  />
-                  <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Delivery details will be sent here</p>
-                </div>
+                  <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl border border-white/5 bg-white/5 group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/10 to-transparent"></div>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="h-full w-full object-contain p-8 relative z-10 transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-brand-primary/10 blur-[60px] rounded-full"></div>
+                  </div>
 
-                {/* Buy Button */}
-                <button
-                  onClick={handlePurchase}
-                  disabled={isProcessingOrder || liveStock === 0}
-                  className="group relative w-full items-center justify-center gap-2 rounded-2xl bg-brand-primary px-4 py-4 text-sm font-bold text-white shadow-xl shadow-brand-primary/20 transition-all duration-300 hover:bg-brand-secondary active:scale-[0.98] overflow-hidden disabled:opacity-50 disabled:grayscale"
-                >
-                  <div className="relative z-10 flex items-center justify-center gap-2">
-                    {isProcessingOrder ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : liveStock === 0 ? (
-                      <>
-                        <Package className="w-4 h-4 opacity-50" />
-                        Out of Stock
-                      </>
+                  <div className="mt-2 flex flex-wrap items-center gap-3">
+                    {liveStock === 0 ? (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-red-500/10 bg-red-500/5 px-4 py-2 backdrop-blur-xl">
+                        <span className="h-2 w-2 rounded-full bg-red-500"></span>
+                        <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Out of Stock</span>
+                      </div>
+                    ) : liveStock < 10 ? (
+                      <div className="inline-flex items-center gap-2 rounded-full border border-red-400/10 bg-red-400/5 px-4 py-2 backdrop-blur-xl">
+                        <span className="h-2 w-2 rounded-full bg-red-400"></span>
+                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Only {liveStock} left!</span>
+                      </div>
                     ) : (
-                      <>
-                        <ShoppingBag className="w-4 h-4" />
-                        Buy Now
-                      </>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-zinc-500/10 bg-zinc-500/5 px-4 py-2 backdrop-blur-xl">
+                        <span className="h-2 w-2 rounded-full bg-zinc-500"></span>
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{liveStock} items left</span>
+                      </div>
                     )}
                   </div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
-                </button>
-
-                <div className="mt-4 text-center text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
-                  By continuing, you agree to our <span className="text-zinc-300">Terms of Service</span>.
                 </div>
-
-                {/* Toast Notification */}
-                <AnimatePresence>
-                  {showToast && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="mt-6 p-4 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl"
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-400/10 border border-emerald-400/20">
-                          <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-white">Ready to pay</div>
-                          <div className="mt-1 text-xs text-zinc-400">Redirecting to secure {paymentMethod} gateway...</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
-          </div>
-        </section>
+
+            {/* Right: Checkout Panel */}
+            <div className="lg:col-span-5">
+              <div className="sticky top-24 rounded-3xl border border-white/10 bg-zinc-900/40 shadow-sm backdrop-blur-xl">
+                <div className="p-6 sm:p-8">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-sm font-bold text-white uppercase tracking-widest opacity-50">Order Summary</h2>
+                    <div className="flex items-center gap-2 text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+                      <Lock className="w-3 h-3" />
+                      Secure
+                    </div>
+                  </div>
+
+                  {/* Quantity */}
+                  <div className="mb-8">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-xs font-bold text-white uppercase tracking-widest">Quantity</div>
+                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Max 10</div>
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-xl">
+                      <button
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 active:scale-90 transition-all disabled:opacity-50 shadow-sm"
+                        disabled={quantity <= 1}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+
+                      <div className="text-sm font-bold text-white">{quantity}</div>
+
+                      <button
+                        onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900 text-white hover:bg-zinc-800 active:scale-90 transition-all disabled:opacity-50 shadow-sm"
+                        disabled={quantity >= 10}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Method */}
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Payment Method</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'crypto', icon: <Bitcoin className="w-4 h-4" />, label: 'Crypto' },
+                        { id: 'card', icon: <CreditCard className="w-4 h-4" />, label: 'Card' },
+                        { id: 'wallet', icon: <Wallet className="w-4 h-4" />, label: 'Wallet' }
+                      ].map((method) => (
+                        <button
+                          key={method.id}
+                          onClick={() => setPaymentMethod(method.id)}
+                          className={`flex flex-col items-center justify-center gap-2 p-3 rounded-2xl border transition-all duration-300 ${
+                            paymentMethod === method.id 
+                              ? 'bg-brand-primary/10 border-brand-primary text-brand-primary shadow-lg shadow-brand-primary/10' 
+                              : 'bg-white/5 border-white/10 text-zinc-500 hover:border-white/20'
+                          }`}
+                        >
+                          {method.icon}
+                          <span className="text-[8px] font-bold uppercase tracking-wider">{method.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Coupon Code Section */}
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Coupon Code</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        placeholder="Enter code"
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors"
+                        disabled={isApplyingCoupon || !!appliedCoupon}
+                      />
+                      <button
+                        onClick={handleApplyCoupon}
+                        disabled={isApplyingCoupon || !couponCode.trim() || !!appliedCoupon}
+                        className="px-4 py-2 rounded-xl bg-zinc-800 text-white text-xs font-bold hover:bg-zinc-700 transition-colors disabled:opacity-50"
+                      >
+                        {isApplyingCoupon ? '...' : 'Apply'}
+                      </button>
+                    </div>
+                    {couponError && <p className="mt-2 text-[10px] text-red-400 font-medium">{couponError}</p>}
+                    {appliedCoupon && (
+                      <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">
+                            {appliedCoupon.code} applied! (-{appliedCoupon.discount}%)
+                          </span>
+                        </div>
+                        <button 
+                          onClick={() => setAppliedCoupon(null)}
+                          className="p-1 hover:bg-white/5 rounded-full transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Summary Rows */}
+                  <div className="space-y-3 mb-8">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="text-zinc-500 font-medium">Subtotal</div>
+                      <div className="font-bold text-white">{currencySymbol}{subtotal.toFixed(2)}</div>
+                    </div>
+                    {appliedCoupon && (
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="text-emerald-400 font-medium">Discount ({appliedCoupon.discount}%)</div>
+                        <div className="font-bold text-emerald-400">-{currencySymbol}{discountAmount.toFixed(2)}</div>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="text-zinc-500 font-medium">Processing Fee</div>
+                      <div className="font-bold text-emerald-400">Free</div>
+                    </div>
+                    <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-bold text-white">Total</div>
+                        <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Taxes included</div>
+                      </div>
+                      <div className="text-xl font-bold tracking-tight text-white">{currencySymbol}{totalPrice}</div>
+                    </div>
+                  </div>
+
+                  {/* Email Section */}
+                  <div className="mb-8">
+                    <label className="block text-xs font-bold text-white uppercase tracking-widest mb-4">Customer Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-brand-primary transition-colors mb-2"
+                    />
+                    <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest px-1">Delivery details will be sent here</p>
+                  </div>
+
+                  {/* Buy Button */}
+                  <button
+                    onClick={handlePurchase}
+                    disabled={isProcessingOrder || liveStock === 0}
+                    className="group relative w-full rounded-[2rem] bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600 p-6 text-xs font-black text-white shadow-2xl shadow-blue-500/30 transition-all duration-500 hover:scale-[1.03] active:scale-[0.97] disabled:opacity-50 disabled:hover:scale-100 overflow-hidden uppercase tracking-[0.3em]"
+                  >
+                    <AnimatePresence mode="wait">
+                      {isProcessingOrder ? (
+                        <motion.div key="waiting" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-4">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <span>Securing...</span>
+                        </motion.div>
+                      ) : (
+                        <motion.div key="buy" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center justify-center gap-4 relative z-10">
+                          <ShoppingBag className="w-4 h-4" />
+                          <span>Authorize Payment</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                  </button>
+
+                  <div className="mt-4 text-center text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
+                    By continuing, you agree to our <span className="text-zinc-300">Terms of Service</span>.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </motion.div>
   );

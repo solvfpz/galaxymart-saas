@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
+import { connectDB } from '@/lib/mongodb';
 import Admin from '@/models/Admin';
 import bcrypt from 'bcryptjs';
 import { signJwtToken } from '@/lib/auth';
@@ -8,11 +8,11 @@ export async function POST(req: Request) {
   console.log('--- Login API Called ---');
   try {
     try {
-      await dbConnect();
+      await connectDB();
     } catch (dbError: any) {
-      console.error('Login API: Database connection failed');
+      console.error('--- Login API: Failed to connect to MongoDB ---');
       return NextResponse.json(
-        { success: false, message: "Database connection failed" },
+        { success: false, message: "Database connection failed. Check your IP whitelist in MongoDB Atlas." },
         { status: 503 }
       );
     }
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Seed logic: If no admin exists, create a default one
+    // --- Seeding logic (ensures admin exists) ---
     try {
       const adminCount = await Admin.countDocuments();
       if (adminCount === 0) {
@@ -40,16 +40,17 @@ export async function POST(req: Request) {
           email: 'admin@example.com',
           passwordHash: hashedPassword,
         });
-        console.log('Seeded default admin account: admin@example.com / password123');
+        console.log('--- Database Seeded: Created default admin (admin@example.com / password123) ---');
       }
-    } catch (seedError) {
-      console.error('Error checking/seeding admin:', seedError);
+    } catch (seedError: any) {
+      console.error('Login API: Error during admin check/seeding:', seedError.message);
     }
 
-    const admin = await Admin.findOne({ email });
+    // --- Authentication logic ---
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
 
     if (!admin) {
-      console.log(`Login Failed: User ${email} not found`);
+      console.log(`Login Failed: No admin found with email ${email}`);
       return NextResponse.json(
         { success: false, message: 'Invalid email or password' },
         { status: 401 }
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     const isMatch = await bcrypt.compare(password, admin.passwordHash);
 
     if (!isMatch) {
-      console.log(`Login Failed: Incorrect password for ${email}`);
+      console.log(`Login Failed: Password mismatch for ${email}`);
       return NextResponse.json(
         { success: false, message: 'Invalid email or password' },
         { status: 401 }
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
 
     const token = await signJwtToken({ email: admin.email, sub: admin._id.toString() });
 
-    console.log(`Login Successful: ${email}`);
+    console.log(`--- Login SUCCESS: ${email} ---`);
     const response = NextResponse.json(
       { success: true, message: 'Logged in successfully' },
       { status: 200 }
@@ -78,7 +79,7 @@ export async function POST(req: Request) {
       name: 'token',
       value: token,
       httpOnly: true,
-      secure: true, // Always true for modern browsers/Next.js
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24, // 24 hours
       path: '/',
@@ -86,7 +87,8 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Login API Error:', error.message);
+    console.error('--- Critical Login API Error ---');
+    console.error(error.message);
     return NextResponse.json(
       { success: false, message: 'Internal Server Error' },
       { status: 500 }

@@ -17,13 +17,20 @@ if (!cached) {
 }
 
 async function dbConnect() {
-  if (!MONGODB_URI) {
-    console.error('MongoDB Connection Error: MONGODB_URI is missing.');
-    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  const redactedUri = MONGODB_URI ? MONGODB_URI.replace(/:([^@]+)@/, ":****@") : "MISSING";
+  
+  if (cached.conn) {
+    console.log('--- MongoDB: Using cached connection ---');
+    return cached.conn;
   }
 
-  if (cached.conn) {
-    return cached.conn;
+  if (!MONGODB_URI) {
+    console.error('MongoDB Connection Error: MONGODB_URI is missing.');
+    console.log('Environment Debug:', {
+      hasUri: !!process.env.MONGODB_URI,
+      nodeEnv: process.env.NODE_ENV
+    });
+    throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
   }
 
   if (!cached.promise) {
@@ -31,12 +38,19 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    console.log('--- MongoDB: Attempting to connect... ---');
+    console.log(`--- MongoDB: Attempting to connect to: ${redactedUri} ---`);
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
       console.log('MongoDB connected successfully');
       return mongoose;
     }).catch((err) => {
-      console.error('MongoDB connection error:', err.message);
+      console.error('--- MongoDB Connection Exception ---');
+      console.error('Error Code:', err.code);
+      console.error('Error Message:', err.message);
+      
+      if (err.message.includes('Could not connect to any servers')) {
+        console.error('FIX: Whitelist your current IP address in MongoDB Atlas.');
+      }
+      
       cached.promise = null; // Reset promise so it can be retried
       throw err;
     });
@@ -46,10 +60,11 @@ async function dbConnect() {
     cached.conn = await cached.promise;
     return cached.conn;
   } catch (error: any) {
-    console.error('MongoDB Connection Failed:', error.message);
     cached.promise = null;
     throw error;
   }
 }
 
+// Alias for convenience
+export const connectDB = dbConnect;
 export default dbConnect;
