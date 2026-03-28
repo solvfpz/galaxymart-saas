@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from 'mongoose';
-
 export interface IAdmin extends Document {
   email: string;
   passwordHash: string;
