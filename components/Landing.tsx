@@ -49,7 +49,8 @@ import {
   XCircle,
   RefreshCw,
   Phone,
-  MapPin
+  MapPin,
+  Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
@@ -323,21 +324,9 @@ const Features = () => {
   );
 };
 
-const ProductCard = ({ product, index }: any) => {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
+const ProductCard = ({ product, index }: { product: any, index: number }) => {
   const router = useRouter();
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-  };
-
-  const currencySymbol = product.currency === 'EUR' ? '€' : '$';
-  const displayPrice = typeof product.price === 'number'
-    ? `${currencySymbol}${product.price.toFixed(2)}`
-    : product.price;
-  const displayDuration = product.duration || 'Lifetime';
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [stock, setStock] = useState(product.stock || 0);
 
   useEffect(() => {
@@ -352,127 +341,93 @@ const ProductCard = ({ product, index }: any) => {
     return () => clearInterval(interval);
   }, [product]);
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  const currencySymbol = product.currency === 'EUR' ? '€' : '$';
+  const displayPrice = typeof product.price === 'number' ? `${currencySymbol}${product.price.toFixed(2)}` : product.price;
+  const displayDuration = product.duration || '1 Month';
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay: index * 0.05 }}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1 }}
       onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className="group relative rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col h-full"
-      style={{
-        background: 'linear-gradient(135deg, rgba(30, 40, 120, 0.45) 0%, rgba(10, 15, 60, 0.6) 100%)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderColor: isHovered ? 'rgba(120, 150, 255, 0.5)' : 'rgba(100, 130, 255, 0.25)',
-        boxShadow: isHovered 
-          ? '0 0 24px rgba(100, 130, 255, 0.2), 0 8px 32px rgba(0, 0, 50, 0.4), 0 8px 32px rgba(80, 100, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08)' 
-          : '0 8px 32px rgba(80, 100, 255, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
-        transform: isHovered ? 'translateY(-4px)' : 'translateY(0)',
-      }}
+      className="group relative bg-[#080d17] border border-white/5 rounded-2xl overflow-hidden hover:border-blue-500/30 transition-all duration-500 shadow-2xl"
     >
-      {/* Gradient Hover Effect */}
-      <div
-        className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+      {/* Interactive Mouse Glow */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"
         style={{
-          opacity: isHovered ? 1 : 0,
-          background: `radial-gradient(400px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(59, 130, 246, 0.12), transparent 80%)`,
+          background: `radial-gradient(350px circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(59, 130, 246, 0.08), transparent 80%)`,
         }}
       />
 
-      {/* Large Background Graphic */}
-      <div className="absolute -right-4 -top-4 text-8xl font-black text-white/[0.02] select-none pointer-events-none group-hover:text-brand-primary/[0.05] transition-colors duration-500">
-        {product.name.split(' ')[0]}
-      </div>
-
-      <div className="relative z-10 flex flex-col h-full p-3.5">
+      <div className="relative z-10 p-4 flex flex-col h-full">
         {/* Product Image Section */}
-        <div 
-          className="relative w-full aspect-[16/9] mb-3 overflow-hidden rounded-xl bg-white/5 group-hover:border-blue-400/30 transition-colors duration-300"
-          style={{ boxShadow: 'inset 0 -8px 20px rgba(10, 15, 60, 0.6)' }}
-        >
+        <div className="relative w-full aspect-[16/10] mb-3 overflow-hidden rounded-xl border border-white/5 bg-[#0a0f1a]">
           {product.image ? (
             <img 
               src={product.image} 
               alt={product.name} 
-              className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-                (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
-              }}
+              className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-1000"
             />
-          ) : null}
-          <div className={`absolute inset-0 bg-gradient-to-br from-blue-500/20 to-indigo-500/20 ${product.image ? 'hidden' : ''}`}>
-            <div className="w-full h-full flex items-center justify-center">
-              <Package className="w-12 h-12 text-white/30" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-blue-900/20 to-zinc-900">
+              <Package className="w-10 h-10 text-white/10" />
             </div>
-          </div>
+          )}
+          
+          {/* Stock Badge Overlay */}
+          {stock > 0 && stock < 10 && (
+            <div className="absolute top-3 right-3 px-2 py-1 rounded-md bg-red-500/10 border border-red-500/20 backdrop-blur-md">
+              <span className="text-[10px] font-black text-red-400 uppercase tracking-wider animate-pulse">
+                Only {stock} left!
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="mb-3 px-1">
-          <h3 
-            className="text-base font-bold text-white mb-1 group-hover:text-blue-300 transition-colors duration-300"
-            style={{ textShadow: '0 0 20px rgba(150, 160, 255, 0.3)' }}
-          >
+        {/* Content Section */}
+        <div className="mb-3">
+          <h3 className="text-[16px] font-bold text-white mb-1 tracking-tight group-hover:text-blue-400 transition-colors">
             {product.name}
           </h3>
-          <div className="flex flex-col gap-1">
-            <div className="flex items-baseline gap-2">
-              <span 
-                className="text-xl font-bold text-brand-primary"
-                style={{ textShadow: '0 0 15px rgba(59, 130, 246, 0.5)' }}
-              >
-                {displayPrice}
-              </span>
-              <span className="text-zinc-400 text-[10px] font-medium uppercase tracking-wider">/ {displayDuration}</span>
-            </div>
-            {stock > 0 && (
-              stock < 10 ? (
-                <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest animate-pulse">Only {stock} left!</span>
-              ) : (
-                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{stock} items left</span>
-              )
-            )}
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-lg font-bold text-blue-500 tracking-tight">{displayPrice}</span>
+            <span className="text-zinc-500 text-[11px] font-medium uppercase tracking-wider">/ {displayDuration}</span>
           </div>
         </div>
         
-        <ul className="space-y-2 mb-4 flex-1 px-1">
-          {(product.perks || [product.description || 'High Quality', 'Instant Delivery', '24/7 Support']).slice(0, 3).map((perk: string, j: number) => (
-            <li key={j} className="flex items-center gap-2 text-xs text-zinc-300">
-              <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(120, 150, 255, 0.8)' }} />
-              {perk}
+        {/* Features List */}
+        <ul className="space-y-1.5 mb-5 flex-1">
+          {[
+            'Quality Product & Fresh',
+            'Instant Delivery',
+            '24/7 Support'
+          ].map((feat, i) => (
+            <li key={i} className="flex items-center gap-2 text-[12px] text-zinc-400 font-medium">
+              <div className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-blue-400" />
+              </div>
+              {feat}
             </li>
           ))}
         </ul>
 
-        <div className="mt-auto space-y-2.5 text-center">
-          <button
-            onClick={() => router.push(`/product/${product.id ?? product._id}`)}
-            disabled={stock === 0}
-            className="w-full py-2 rounded-xl text-white text-[12px] font-bold transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed"
-            style={stock === 0 
-              ? { background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: 'rgba(255, 255, 255, 0.4)' }
-              : { background: 'linear-gradient(135deg, #5a6fff, #3a4fd4)', boxShadow: '0 4px 15px rgba(90, 111, 255, 0.3)' }
-            }
-          >
-            {stock === 0 ? 'Not Available' : 'Purchase Now'}
-          </button>
-          
-          <AnimatePresence>
-            {stock === 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[10px] font-black text-red-400 uppercase tracking-[0.2em]"
-                style={{ textShadow: '0 0 10px rgba(255, 60, 60, 0.4)' }}
-              >
-                Out of Stock
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-        </div>
+        {/* Action Button */}
+        <button
+          onClick={() => router.push(`/product/${product.id ?? product._id}`)}
+          disabled={stock === 0}
+          className="w-full h-10 rounded-xl bg-blue-600 text-white text-[12px] font-bold tracking-tight transition-all duration-300 hover:bg-blue-500 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-20 disabled:grayscale relative overflow-hidden"
+          style={{ boxShadow: '0 4px 20px rgba(37, 99, 235, 0.2)' }}
+        >
+          {stock === 0 ? 'Out of Stock' : 'Purchase Now'}
+        </button>
       </div>
     </motion.div>
   );
@@ -1358,10 +1313,10 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                       </div>
                       <input
                         type="text"
-                        placeholder="GALAXY20"
+                        placeholder="Enter Coupon Code"
                         value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        className="block w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-brand-primary/50 transition-all uppercase text-sm"
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="block w-full pl-11 pr-4 py-3 rounded-xl bg-white/5 border border-white/[0.06] text-white placeholder:text-zinc-600 focus:outline-none focus:border-brand-primary/50 transition-all text-sm"
                       />
                     </div>
                     <button

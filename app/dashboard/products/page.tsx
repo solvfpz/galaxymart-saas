@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { 
   Plus, Pencil, Trash2, Loader2, Package, Globe, Lock, EyeOff, 
   PauseCircle, Settings2, Database, Share2, DollarSign, 
-  ChevronDown, Check 
+  ChevronDown, Check, Upload, ImageIcon 
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -108,6 +108,39 @@ export default function ProductsPage() {
   const [deliveryMethod, setDeliveryMethod] = useState('Random');
   const [visibility, setVisibility] = useState('Public');
   const [currency, setCurrency] = useState('USD');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size too large (max 5MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.success) {
+        setImage(data.url);
+        toast.success('Image uploaded successfully');
+      } else {
+        toast.error(data.error || 'Upload failed');
+      }
+    } catch {
+      toast.error('Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -403,13 +436,68 @@ export default function ProductsPage() {
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Image URL</label>
-                      <input
-                        type="url" required value={image} onChange={(e) => setImage(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono text-xs"
-                        placeholder="https://imgur.com/example.png"
-                      />
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Product Image</label>
+                        {image && (
+                          <button 
+                            type="button" 
+                            onClick={() => setImage('')}
+                            className="text-[10px] font-bold text-destructive uppercase tracking-widest hover:underline"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-4">
+                        {/* URL Input */}
+                        <div className="space-y-1.5">
+                          <input
+                            type="text" value={image} onChange={(e) => setImage(e.target.value)}
+                            className="w-full rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary font-mono text-[11px]"
+                            placeholder="Paste image URL here..."
+                          />
+                        </div>
+
+                        {/* File Upload Area */}
+                        <div className="relative group">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            disabled={isUploading}
+                          />
+                          <div className={`flex flex-col items-center justify-center gap-3 py-6 rounded-xl border-2 border-dashed transition-all duration-200 ${
+                            isUploading ? 'bg-muted border-border' : 'bg-muted/10 border-border/50 group-hover:border-primary group-hover:bg-primary/5'
+                          }`}>
+                            {isUploading ? (
+                              <>
+                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Uploading...</span>
+                              </>
+                            ) : image ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <div className="h-16 w-16 rounded-lg overflow-hidden border border-border shadow-md">
+                                  <img src={image} alt="Preview" className="h-full w-full object-cover" />
+                                </div>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Change Image</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="p-3 rounded-full bg-primary/10 text-primary">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-[11px] font-bold text-foreground uppercase tracking-widest">Click or Drag to Upload</p>
+                                  <p className="text-[9px] text-muted-foreground mt-1">PNG, JPG or WEBP (Max 5MB)</p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
