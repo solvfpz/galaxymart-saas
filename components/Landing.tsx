@@ -452,21 +452,11 @@ const Products = ({ dbProducts }: { dbProducts?: any[] }) => {
           viewport={{ once: true }}
           className="text-center max-w-2xl mx-auto mb-16"
         >
-          <h2 className="font-display text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary mb-6">
+          <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-4">
             Our Products
           </h2>
-          <p className="text-zinc-400 text-lg">
-            Choose the perfect package to level up your Discord community
-          </p>
+          <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto"></div>
         </motion.div>
-
-        <div className="flex justify-center gap-4 mb-16">
-          <button
-            className="px-8 py-3 rounded-xl font-medium transition-all duration-300 border border-brand-primary bg-brand-primary/10 text-brand-primary shadow-lg shadow-brand-primary/20"
-          >
-            All Products
-          </button>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <AnimatePresence mode="wait">
@@ -597,24 +587,24 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
         return { 
           stepIndex: 0, 
           message: 'Waiting for Payment',
-          color: 'text-blue-400',
-          bgColor: 'bg-blue-500/10 border-blue-500/30'
+          color: 'text-yellow-400',
+          bgColor: 'bg-yellow-500/10 border-yellow-500/30'
         };
       case 'paid':
       case 'manual_paid':
       case 'confirmed':
         return { 
           stepIndex: 2, 
-          message: (status === 'manual_paid' || status === 'confirmed') ? 'Manually Verified' : 'Payment Confirmed',
-          color: 'text-emerald-400',
-          bgColor: 'bg-emerald-500/10 border-emerald-500/30'
+          message: 'Payment Confirmed',
+          color: 'text-blue-400',
+          bgColor: 'bg-blue-500/10 border-blue-500/30'
         };
       case 'delivered':
         return { 
           stepIndex: 4, 
           message: 'Order Delivered!',
-          color: 'text-purple-400',
-          bgColor: 'bg-purple-500/10 border-purple-500/30'
+          color: 'text-emerald-400',
+          bgColor: 'bg-emerald-500/10 border-emerald-500/30'
         };
       case 'expired':
         return { 
@@ -627,8 +617,8 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
         return { 
           stepIndex: 0, 
           message: 'Waiting for Payment',
-          color: 'text-blue-400',
-          bgColor: 'bg-blue-500/10 border-blue-500/30'
+          color: 'text-yellow-400',
+          bgColor: 'bg-yellow-500/10 border-yellow-500/30'
         };
     }
   };
@@ -1661,11 +1651,9 @@ const ReviewSkeleton = () => (
 );
 
 const Marquee = ({ items }: { items: any[] }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const displayItems = [...items, ...items, ...items, ...items];
 
@@ -1677,61 +1665,41 @@ const Marquee = ({ items }: { items: any[] }) => {
       const delta = time - lastTime;
       lastTime = time;
 
-      if (containerRef.current && !isHovered && !isDragging) {
-        containerRef.current.scrollLeft += (delta * 0.06); 
-        
-        const singleSetWidth = containerRef.current.scrollWidth / 4;
-        if (containerRef.current.scrollLeft >= singleSetWidth * 2) {
-           containerRef.current.scrollLeft -= singleSetWidth;
-        } else if (containerRef.current.scrollLeft <= 0) {
-           containerRef.current.scrollLeft += singleSetWidth;
-        }
+      if (!isHovered) {
+        setOffset(prev => {
+          const next = prev + (delta * 0.18);
+          // If we've scrolled past one full set of items, loop back smoothly
+          // We assume each set is roughly the same width
+          if (containerRef.current) {
+            const fullWidth = containerRef.current.scrollWidth / 4;
+            if (next >= fullWidth) return next - fullWidth;
+          }
+          return next;
+        });
       }
       animationId = requestAnimationFrame(scroll);
     };
     animationId = requestAnimationFrame(scroll);
     return () => cancelAnimationFrame(animationId);
-  }, [isHovered, isDragging]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    setStartX(e.pageX - (containerRef.current?.offsetLeft || 0));
-    setScrollLeft(containerRef.current?.scrollLeft || 0);
-  };
-
-  const handleMouseLeave = () => {
-    setIsDragging(false);
-    setIsHovered(false);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    const x = e.pageX - (containerRef.current?.offsetLeft || 0);
-    const walk = (x - startX) * 1.5; 
-    if (containerRef.current) {
-      containerRef.current.scrollLeft = scrollLeft - walk;
-    }
-  };
+  }, [isHovered]);
 
   return (
     <div 
-      ref={containerRef}
-      className="flex gap-5 overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing w-full py-4 select-none scroll-smooth will-change-transform"
+      className="overflow-hidden w-full py-4 select-none relative"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseMove={handleMouseMove}
-      style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {displayItems.map((review, idx) => (
-        <ReviewCard key={`${review._id || idx}-${idx}`} review={review} />
-      ))}
+      <div 
+        ref={containerRef}
+        className="flex gap-5 will-change-transform"
+        style={{ 
+          transform: `translateX(-${offset}px)`,
+        }}
+      >
+        {displayItems.map((review, idx) => (
+          <ReviewCard key={`${review._id || idx}-${idx}`} review={review} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -1757,8 +1725,23 @@ const ReviewsSection = () => {
   }, []);
 
   return (
-    <section id="reviews" className="py-16 bg-black relative overflow-hidden w-full border-y border-white/5">
+    <section id="reviews" className="py-24 bg-black relative overflow-hidden w-full border-y border-white/5">
       <div className="max-w-[1400px] mx-auto relative px-4 sm:px-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="text-center mb-16"
+        >
+          <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-4">
+            Voices of the Community
+          </h2>
+          <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto mb-6"></div>
+          <p className="text-white/60 text-lg max-w-xl mx-auto">
+            Real feedback from thousands of satisfied members across the galaxy.
+          </p>
+        </motion.div>
+
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}

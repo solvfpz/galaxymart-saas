@@ -38,6 +38,15 @@ export async function GET(req: Request) {
     // If order was created more than 30 seconds ago, simulate a confirmation
     const secondsSinceCreation = (Date.now() - new Date(order.createdAt).getTime()) / 1000;
     
+    if (order.status === 'delivered') {
+      return NextResponse.json({ 
+        success: true, 
+        status: 'delivered',
+        receivedAmount: order.ltcAmount,
+        txHash: '0x8b7670c63c7a4e83bed207205773f6448e89f2a1b1c2d3e4f5g6h7i8j9k0l1m'
+      });
+    }
+
     if (order.status === 'confirmed') {
        return NextResponse.json({ 
         success: true, 

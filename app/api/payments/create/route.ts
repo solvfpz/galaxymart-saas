@@ -22,8 +22,9 @@ export async function POST(req: Request) {
     }
 
     // Product.price might be a string like "$2.49" or a number
-    const priceValue = typeof product.price === 'string' 
-      ? parseFloat(product.price.replace('$', '')) 
+    const priceStr = String(product.price);
+    const priceValue = typeof product.price === 'string'
+      ? parseFloat(priceStr.replace('$', ''))
       : product.price;
       
     const quantity = parseInt(productDetails.quantity) || 1;
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
       productId,
       customerEmail: productDetails.email,
       status: 'pending',
+      quantity,
       amount: finalUsdAmount,
       usdAmount: finalUsdAmount,
       ltcAmount: finalLtcAmount,
@@ -87,8 +89,8 @@ export async function POST(req: Request) {
       expiresAt
     });
 
-    // Reduce stock
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: -1 } });
+    // Reduce stock by quantity
+    await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
 
     // 8. Return to Frontend
     return NextResponse.json({

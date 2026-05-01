@@ -98,6 +98,42 @@
   }
 }
 
+@keyframes status-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(var(--glow-color), 0.2),
+                0 0 20px rgba(var(--glow-color), 0.1);
+  }
+  50% {
+    box-shadow: 0 0 10px rgba(var(--glow-color), 0.4),
+                0 0 30px rgba(var(--glow-color), 0.2);
+  }
+}
+
+.status-glow-yellow {
+  --glow-color: 234 179 8;
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+.status-glow-blue {
+  --glow-color: 59 130 246;
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+.status-glow-emerald {
+  --glow-color: 16 185 129;
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+.status-glow-red {
+  --glow-color: 239 68 68;
+  animation: status-glow 2s ease-in-out infinite;
+}
+
+.status-glow-green {
+  --glow-color: 34 197 94;
+  animation: status-glow 2s ease-in-out infinite;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }

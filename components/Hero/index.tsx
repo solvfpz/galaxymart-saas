@@ -44,24 +44,20 @@ const CyclingWord = () => {
 
 export const Hero = () => {
   return (
-    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center">
-      {/* DarkVeil Background */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 0
-      }}>
+    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center bg-[#020202]">
+      {/* DarkVeil Background Container */}
+      <div className="absolute inset-0 w-full h-full z-0 pointer-events-none min-h-[500px]">
         <DarkVeil
-          hueShift={21}
-          noiseIntensity={0.05}
-          scanlineIntensity={0.1}
-          speed={2.3}
-          scanlineFrequency={3.8}
-          warpAmount={0.3}
+          hueShift={27}
+          noiseIntensity={0.02}
+          scanlineIntensity={0.03}
+          speed={2.0}
+          scanlineFrequency={1.2}
+          warpAmount={4.0}
           resolutionScale={1}
         />
+        {/* Subtle Overlay to blend the shader better */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none" />
       </div>
 
       {/* All existing hero content stays here with zIndex 1 */}
