@@ -5,9 +5,13 @@ import { verifyJwtToken } from '@/lib/auth';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Protect /dashboard routes and /api/ routes EXCEPT /api/auth
+  // Protect /dashboard routes and /api/ routes EXCEPT /api/auth, /api/reviews, /api/orders, /api/payments
   const isDashboardRoute = pathname.startsWith('/dashboard');
-  const isApiRoute = pathname.startsWith('/api/') && !pathname.startsWith('/api/auth');
+  const isApiRoute = pathname.startsWith('/api/') && 
+                     !pathname.startsWith('/api/auth') && 
+                     !pathname.startsWith('/api/reviews') &&
+                     !pathname.startsWith('/api/orders') &&
+                     !pathname.startsWith('/api/payments');
 
   if (isDashboardRoute || isApiRoute) {
     const token = request.cookies.get('token')?.value;

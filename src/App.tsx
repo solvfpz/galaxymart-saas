@@ -38,7 +38,11 @@ import {
   Copy,
   Loader2,
   Clock,
-  Calendar
+  Calendar,
+  Rocket,
+  ShieldCheck,
+  Gem,
+  Headphones,
 } from 'lucide-react';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -93,7 +97,7 @@ const Navbar = () => {
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 via-blue-400 to-cyan-300 shadow-inner relative overflow-hidden group-hover:scale-105 transition-transform duration-300">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.4),transparent)]"></div>
               </div>
-              <span className="font-bold text-[14px] tracking-tight text-white">GALAXY BOOSTS</span>
+              <span className="text-[14px] font-bold tracking-tighter text-white">GALAXY BOOSTS</span>
             </a>
           </div>
           
@@ -227,28 +231,28 @@ const Navbar = () => {
 const Features = () => {
   const branches = [
     {
-      icon: <Zap className="w-5 h-5" />,
+      icon: <Rocket className="w-5 h-5" />,
       title: "Instant Delivery",
       desc: "Automated delivery system that works within seconds",
-      glowColor: "rgba(34, 211, 238, 0.1)" // Cyan
+      glowColor: "rgba(34, 211, 238, 0.15)"
     },
     {
-      icon: <Shield className="w-5 h-5" />,
+      icon: <ShieldCheck className="w-5 h-5" />,
       title: "100% Safe",
       desc: "Fully compliant with Discord's terms of service",
-      glowColor: "rgba(16, 185, 129, 0.1)" // Emerald
+      glowColor: "rgba(16, 185, 129, 0.15)"
     },
     {
-      icon: <Sparkles className="w-5 h-5" />,
+      icon: <Gem className="w-5 h-5" />,
       title: "Premium Quality",
       desc: "Real, high-quality boosts from verified sources",
-      glowColor: "rgba(139, 92, 246, 0.1)" // Purple
+      glowColor: "rgba(139, 92, 246, 0.15)"
     },
     {
-      icon: <MessageCircle className="w-5 h-5" />,
+      icon: <Headphones className="w-5 h-5" />,
       title: "24/7 Support",
       desc: "Round-the-clock assistance whenever you need help",
-      glowColor: "rgba(99, 102, 241, 0.1)" // Brand Primary
+      glowColor: "rgba(99, 102, 241, 0.15)"
     }
   ];
 
@@ -273,7 +277,7 @@ const Features = () => {
 
             <h2 className="font-display text-4xl sm:text-5xl font-bold text-white tracking-tight mb-4 relative z-10 leading-tight">
               Why choose<br />
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">boosts.to?</span>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">GalaxyBoosts?</span>
             </h2>
             
             <p className="text-zinc-400 text-lg font-light leading-relaxed mb-8 max-w-[90%] relative z-10">
@@ -308,7 +312,7 @@ const Features = () => {
                 style={{ background: `linear-gradient(to right, transparent, ${branch.glowColor}, transparent)` }}
               ></div>
               
-              <div className="shrink-0 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-500 group-hover:text-brand-primary group-hover:border-brand-primary/20 group-hover:bg-brand-primary/10 transition-all duration-300">
+              <div className="shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-white/10 to-white/5 border border-white/10 flex items-center justify-center text-zinc-400 group-hover:text-cyan-400 group-hover:border-cyan-500/30 group-hover:bg-cyan-500/10 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.2)] transition-all duration-500">
                 {branch.icon}
               </div>
               <div className="flex-1 relative z-10">
@@ -1301,14 +1305,6 @@ const Footer = () => {
 
   const sections = [
     {
-      title: "Products",
-      links: ["Discord Boosts", "Nitro", "Lifetime Boosts", "Reseller Program", "Boost Bots"]
-    },
-    {
-      title: "Company",
-      links: ["About Us", "Contact", "Careers", "Blog", "Press Kit"]
-    },
-    {
       title: "Support",
       links: ["Help Center", "Terms of Service", "Privacy Policy", "Refund Policy", "Status"]
     },
@@ -1374,28 +1370,20 @@ const Footer = () => {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-8 sm:px-12 relative z-10">
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-12 mb-24">
-          <div className="col-span-2 lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-24">
+          <div className="lg:col-span-1">
             <Magnetic>
               <a className="text-3xl font-bold text-white tracking-tighter mb-6 block" href="/">
-                boosts<span className="text-blue-500">.to</span>
+                GalaxyBoosts
               </a>
             </Magnetic>
             <p className="text-zinc-500 text-sm leading-relaxed max-w-[200px]">
               The leading provider for premium Discord enhancement products and accounts.
             </p>
-            <div className="flex items-center gap-4 mt-8">
-              {[Twitter, MessageCircle, Instagram].map((Icon, i) => (
-                <Magnetic key={i}>
-                  <a href="#" className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-white/10 transition-all duration-300">
-                    <Icon className="w-5 h-5" />
-                  </a>
-                </Magnetic>
-              ))}
-            </div>
           </div>
 
-          {sections.map((s, i) => (
+          <div className="lg:col-span-3 flex gap-12 lg:justify-end">
+            {sections.map((s, i) => (
             <motion.div 
               key={i}
               initial={{ opacity: 0, y: 20 }}
@@ -1416,25 +1404,10 @@ const Footer = () => {
               </ul>
             </motion.div>
           ))}
-        </div>
-
-        <div className="pt-12 border-t border-white/5">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
-            <div className="flex items-center gap-8 text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em]">
-              <span>© 2026 GALAXY BOOSTS</span>
-              <div className="hidden md:flex items-center gap-6">
-                <a className="hover:text-white transition-colors" href="#">Terms</a>
-                <a className="hover:text-white transition-colors" href="#">Privacy</a>
-                <a className="hover:text-white transition-colors" href="#">Cookies</a>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-[0.1em]">All systems operational</span>
-            </div>
           </div>
         </div>
+
+        <div className="pt-12 border-t border-white/5"></div>
       </div>
     </footer>
   );

@@ -3,14 +3,67 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CheckCircle2, Clock, Package, Mail, Calendar, DollarSign, ArrowLeft, Download, FileText, ExternalLink } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Mail, Calendar, DollarSign, ArrowLeft, Download, FileText, ExternalLink, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 export default function InvoicePage() {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Review Form State
+  const [email, setEmail] = useState('');
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (order?.customerEmail) {
+      setEmail(order.customerEmail);
+    }
+  }, [order]);
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.includes('@')) {
+      toast.error('Please enter a valid email');
+      return;
+    }
+
+    if (comment.trim().length < 10) {
+      toast.error('Comment must be at least 10 characters');
+      return;
+    }
+    
+    setIsSubmittingReview(true);
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.toLowerCase(),
+          rating,
+          comment,
+          productId: order.productId?._id,
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReviewSubmitted(true);
+        toast.success('Review submitted successfully!');
+      } else {
+        toast.error(data.message || 'Failed to submit review');
+      }
+    } catch (err) {
+      toast.error('Something went wrong');
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -157,6 +210,74 @@ export default function InvoicePage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Review Form - Only show if paid/confirmed */}
+                {order.status === 'confirmed' && !reviewSubmitted && (
+                  <div className="mt-12 p-8 rounded-2xl bg-zinc-900/60 border border-white/10 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-32 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
+                    
+                    <h3 className="text-xl font-bold text-white mb-2">How was your experience?</h3>
+                    <p className="text-sm text-zinc-400 mb-6">Leave a review to let us know how we did. Your feedback helps us improve.</p>
+                    
+                    <form onSubmit={handleReviewSubmit} className="space-y-6 relative z-10">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Email Address</label>
+                          <input 
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="your@email.com"
+                            className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-brand-primary transition-colors"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Rating</label>
+                          <div className="flex items-center gap-2 py-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setRating(star)}
+                                className="focus:outline-none transition-transform hover:scale-110"
+                              >
+                                <Star className={`w-6 h-6 ${star <= rating ? 'text-brand-primary fill-brand-primary' : 'text-zinc-700 fill-zinc-700'}`} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Your Feedback</label>
+                        <textarea 
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          placeholder="Tell us about your experience (min. 10 characters)..."
+                          className="w-full bg-black/50 border border-white/10 rounded-xl p-4 text-white text-sm focus:outline-none focus:border-brand-primary transition-colors min-h-[120px] resize-y"
+                          required
+                        />
+                      </div>
+                      
+                      <button 
+                        type="submit" 
+                        disabled={isSubmittingReview}
+                        className="w-full sm:w-auto px-8 py-3 rounded-xl bg-brand-primary text-black font-bold text-sm tracking-wide hover:bg-brand-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-primary/10"
+                      >
+                        {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+                      </button>
+                    </form>
+                  </div>
+                )}
+                
+                {order.status === 'confirmed' && reviewSubmitted && (
+                  <div className="mt-12 p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-white mb-2">Thank you for your review!</h3>
+                    <p className="text-sm text-zinc-400">Your feedback has been successfully submitted and is now live on our store.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
