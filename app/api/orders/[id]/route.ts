@@ -17,37 +17,46 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    try {
-      await dbConnect();
-    } catch (dbError) {
-      return NextResponse.json(
-        { success: false, message: "Database connection failed" },
-        { status: 503 }
-      );
-    }
+    await dbConnect();
 
     const { id } = await params;
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ success: false, message: 'Invalid payload' }, { status: 400 });
 
-    const order = await Order.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+    const updateData: Record<string, unknown> = {};
+
+    if (body.status !== undefined) {
+      if (body.status === 'manual') {
+        updateData.status = 'manual';
+        updateData.paymentStatus = 'paid';
+      } else if (body.status === 'confirmed') {
+        updateData.status = 'confirmed';
+        updateData.paymentStatus = 'paid';
+      } else if (body.status === 'delivered') {
+        updateData.status = 'delivered';
+      } else if (body.status === 'expired') {
+        updateData.status = 'expired';
+        updateData.paymentStatus = 'unpaid';
+      } else if (body.status === 'pending') {
+        updateData.status = 'pending';
+        updateData.paymentStatus = 'unpaid';
+      } else {
+        updateData.status = body.status;
+      }
+    }
+
+    const order = await Order.findByIdAndUpdate(id, { $set: updateData }, { new: true });
     if (!order) return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
-    return NextResponse.json(order);
+    return NextResponse.json({ success: true, order });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: "Error updating order" }, { status: 500 });
+    console.error('ORDER UPDATE ERROR:', error?.message || error);
+    return NextResponse.json({ success: false, message: 'Failed to update order status' }, { status: 500 });
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    try {
-      await dbConnect();
-    } catch (dbError) {
-      return NextResponse.json(
-        { success: false, message: "Database connection failed" },
-        { status: 503 }
-      );
-    }
+    await dbConnect();
 
     const { id } = await params;
     const order = await Order.findByIdAndDelete(id);

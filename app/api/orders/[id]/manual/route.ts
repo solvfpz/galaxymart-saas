@@ -9,7 +9,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const order = await Order.findByIdAndUpdate(
       id,
-      { status: 'manual_paid' },
+      { status: 'manual', paymentStatus: 'paid' },
       { new: true, runValidators: true }
     ).populate('productId');
 
@@ -27,7 +27,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     });
   } catch (error: any) {
     return NextResponse.json(
-      { success: false, message: 'Error updating order status' },
+      { success: false, message: 'Failed to update order status' },
       { status: 500 }
     );
   }

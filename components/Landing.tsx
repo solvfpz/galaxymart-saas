@@ -527,46 +527,55 @@ const QRView = ({ address }: { address: string }) => {
 };
 
 const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => void, onComplete: () => void }) => {
-  const [status, setStatus] = useState<'pending' | 'paid' | 'manual_paid' | 'confirmed' | 'expired' | 'delivered'>('pending');
+  const [status, setStatus] = useState<'pending' | 'paid' | 'manual' | 'confirmed' | 'expired' | 'delivered'>('pending');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [orderProduct, setOrderProduct] = useState<any>(null);
   const [deliveredItems, setDeliveredItems] = useState<string[]>([]);
+  const [instructions, setInstructions] = useState('');
+  const [orderId, setOrderId] = useState('');
+  const [productId, setProductId] = useState('');
+  const [customerEmail, setCustomerEmail] = useState(data.email || data.customerEmail || '');
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmitFeedback = (e: React.FormEvent) => {
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (rating === 0) {
-      toast.error('Please select a rating');
-      return;
-    }
-    setIsSubmitted(true);
-    toast.success('Thanks for your feedback!');
+    if (rating === 0) { toast.error('Please select a rating'); return; }
+    if (feedback.length < 10) { toast.error('Review must be at least 10 characters'); return; }
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, email: customerEmail, rating, comment: feedback }),
+      });
+      const result = await res.json();
+      if (result.success) { setIsSubmitted(true); toast.success('Thank you for your review!'); }
+      else { toast.error(result.message || 'Failed to submit review'); }
+    } catch { toast.error('Failed to submit review'); }
+    finally { setIsSubmitting(false); }
   };
 
   const checkStatus = async () => {
     try {
       const res = await fetch(`/api/payments/verify?paymentId=${data.paymentId}`);
       const result = await res.json();
-      
-      if (result.status === 'delivered') {
-        setStatus('delivered');
-        if (result.product) setOrderProduct(result.product);
-        if (result.deliveredItems) setDeliveredItems(result.deliveredItems);
-      } else if (result.status === 'paid' || result.status === 'manual_paid' || result.status === 'confirmed') {
+      if (result.orderId) setOrderId(result.orderId);
+      if (result.productId) setProductId(result.productId);
+      if (result.customerEmail) setCustomerEmail(result.customerEmail);
+
+      if (['paid', 'manual', 'confirmed', 'delivered'].includes(result.status)) {
         setStatus(result.status as any);
-        if (result.product) setOrderProduct(result.product);
         if (result.deliveredItems) setDeliveredItems(result.deliveredItems);
+        if (result.instructions) setInstructions(result.instructions);
       } else if (result.status === 'expired') {
         setStatus('expired');
-      } else if (result.status === 'pending') {
+      } else {
         setStatus('pending');
       }
-    } catch (err) {
-      console.error('Verify error:', err);
-    }
+    } catch (err) { console.error('Verify error:', err); }
   };
 
   useEffect(() => {
@@ -591,7 +600,7 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
           bgColor: 'bg-yellow-500/10 border-yellow-500/30'
         };
       case 'paid':
-      case 'manual_paid':
+      case 'manual':
       case 'confirmed':
         return { 
           stepIndex: 2, 
@@ -634,7 +643,7 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
 
   const getStepState = (idx: number) => {
     if (status === 'delivered') return idx <= 4 ? 'done' : 'idle';
-    if (status === 'paid' || status === 'manual_paid' || status === 'confirmed') return idx <= 3 ? 'done' : idx === 3 ? 'active' : 'idle';
+    if (status === 'paid' || status === 'manual' || status === 'confirmed') return idx <= 3 ? 'done' : idx === 3 ? 'active' : 'idle';
     if (status === 'expired') return 'idle';
     if (status === 'pending') return idx === 0 ? 'active' : 'idle';
     return 'idle';
@@ -643,174 +652,179 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.walletAddress || 'ltc1')}&bgcolor=111111&color=ffffff&margin=10`;
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 py-6">
+    <div className="w-full max-w-5xl mx-auto px-2 py-1 flex-1 flex flex-col overflow-hidden min-h-0">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/40">
-            <Bitcoin size={20} className="text-white" />
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-600/40">
+            <Bitcoin size={16} className="text-white" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">Complete Your Payment</p>
-            <p className="text-zinc-500 text-xs">Secure crypto checkout</p>
+            <p className="text-white font-bold text-xs leading-tight">Complete Your Payment</p>
+            <p className="text-zinc-500 text-[10px]">Secure crypto checkout</p>
           </div>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-emerald-400 text-[10px] font-black uppercase tracking-widest">Secure</span>
         </div>
       </div>
 
       {/* ── Payment Success Layout ── */}
-      {(['paid', 'manual_paid', 'confirmed', 'delivered'].includes(status)) ? (
-        <div className="min-h-screen flex flex-col justify-center py-12 animate-in fade-in zoom-in duration-700">
-          {/* Payment Verified Header */}
-          <div className="flex flex-col items-center text-center px-6 pt-4 pb-6">
-            <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(16,185,129,0.3)]">
-              <CheckCircle2 size={40} className="text-white" />
-            </div>
-            <h3 className="text-[32px] font-bold text-white mt-5">Payment Verified!</h3>
-            <p className="text-[16px] text-white/45 mt-2">Your assets have been successfully provisioned.</p>
-          </div>
-
-          {/* Separator */}
-          <div className="w-full h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)', marginBottom: '28px' }} />
-
-          {/* Two Column Grid */}
-          <div className="max-w-[1000px] mx-auto px-6 pb-8" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'stretch' }}>
-            {/* Left Column - Delivery Details */}
-            <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl p-8 flex flex-col">
-              <div className="flex items-center gap-3 mb-5">
-                <Package className="w-5 h-5 text-blue-400" />
-                <span className="text-[13px] font-bold text-white/40 uppercase tracking-[0.16em]">Delivery Details</span>
+      {(['paid', 'manual', 'confirmed', 'delivered'].includes(status)) ? (
+        <div className="fixed inset-0 z-50 w-screen h-screen overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #111111 100%)' }}>
+          {/* Subtle Hexagonal / Network Pattern Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-[0.03]"
+            style={{ backgroundImage: 'radial-gradient(rgba(16, 185, 129, 0.4) 1px, transparent 1px)', backgroundSize: '32px 32px' }}
+          />
+          
+          <div className="relative z-10 w-full h-full flex flex-col justify-center animate-in fade-in zoom-in duration-700">
+            {/* Header Section */}
+            <div className="flex flex-col items-center text-center px-4 mb-10 shrink-0">
+              <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.4)] ring-1 ring-emerald-400/50 mb-5 relative">
+                <div className="absolute inset-0 rounded-full border border-emerald-300/30 animate-ping" style={{ animationDuration: '3s' }} />
+                <CheckCircle2 size={32} className="text-white drop-shadow-md" />
               </div>
-              {deliveredItems && deliveredItems.length > 0 ? (
-                <div className="space-y-3">
-                  {deliveredItems.map((serial: string, i: number) => (
-                    <div key={i} className="flex items-center justify-between bg-white/[0.04] border border-white/[0.08] rounded-xl px-5 py-4">
-                      <code className="text-blue-400 font-mono text-[15px]">{serial}</code>
-                      <button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(serial);
-                          toast.success('Copied!');
-                        }}
-                        className="p-2 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-all"
-                      >
-                        <Copy size={18} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-5 bg-blue-500/5 border border-blue-500/10 rounded-xl">
-                  <p className="text-[14px] text-zinc-400 leading-relaxed">Your service is being provisioned. Please check your email for instructions.</p>
-                </div>
-              )}
-              {orderProduct?.instructions && (
-                <div className="mt-5 pt-5 border-t border-white/[0.06]">
-                  <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Post-Purchase Instructions</p>
-                  <p className="text-[15px] leading-[1.7] text-white/50">{orderProduct.instructions}</p>
-                </div>
-              )}
-
-              {/* Contact Support Button */}
-              <a 
-                href="https://discord.gg/WpbDuTcAQH"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full mt-auto pt-6 border-t border-white/[0.06]"
-              >
-                <button className="w-full flex items-center justify-center gap-3 bg-white/[0.05] border border-white/10 rounded-xl px-5 py-4 text-[15px] text-white/60 hover:bg-white/[0.08] hover:text-white transition-all">
-                  <MessageCircle size={20} />
-                  Contact Support
-                </button>
-              </a>
+              <h3 className="text-3xl font-bold text-white tracking-tight drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]">Payment Verified!</h3>
+              <p className="text-[13px] text-zinc-400 mt-2 font-medium">Your assets have been successfully provisioned.</p>
             </div>
 
-            {/* Right Column - Rate Your Experience */}
-            <AnimatePresence>
-              {status === 'delivered' ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl p-8 flex flex-col"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[13px] font-bold text-white/35 uppercase tracking-[0.18em]">Rate your experience</span>
-                  </div>
-
-                  {isSubmitted ? (
-                    <div className="flex-1 flex flex-col items-center justify-center py-8 space-y-3">
-                      <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/20 flex items-center justify-center">
-                        <CheckCircle2 size={32} className="text-emerald-500" />
+            {/* Main Content Area */}
+            <div className="w-full max-w-[900px] mx-auto px-6 flex flex-col gap-8">
+              {/* Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                
+                {/* Left Card - Delivery Details */}
+                <div className="rounded-[16px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-[12px] p-6 relative overflow-hidden flex flex-col shadow-2xl">
+                  {/* Top Accent Line */}
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                  
+                  <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-4">Delivery Details</h4>
+                  
+                  <div className="flex-1 flex flex-col justify-center">
+                    {deliveredItems && deliveredItems.length > 0 ? (
+                      <div className="space-y-3">
+                        {deliveredItems.map((serial: string, i: number) => (
+                          <div key={i} className="flex items-center justify-between bg-black/20 border border-white/5 rounded-xl px-4 py-3">
+                            <code className="text-blue-400 font-mono text-[13px] truncate flex-1 mr-3">{serial}</code>
+                            <button 
+                              type="button"
+                              onClick={() => { navigator.clipboard.writeText(serial); toast.success('Copied!'); }}
+                              className="p-2 rounded-lg hover:bg-white/10 text-zinc-500 hover:text-white transition-all shrink-0"
+                            >
+                              <Copy size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        {instructions && (
+                          <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5">Instructions</p>
+                            <p className="text-[13px] leading-relaxed text-zinc-300">{instructions}</p>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[13px] font-bold text-white uppercase tracking-widest">Feedback Submitted!</p>
-                      <p className="text-[12px] text-zinc-500">Thank you for helping us improve.</p>
+                    ) : instructions ? (
+                      <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                        <p className="text-[13px] text-zinc-300 leading-relaxed whitespace-pre-line">{instructions}</p>
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                        <p className="text-[13px] text-amber-200/90 leading-relaxed">
+                          Your order is confirmed! Contact us on <span className="font-bold text-amber-400">Discord</span> with your payment ID <span className="font-mono text-white/60">{data.paymentId}</span> to receive your delivery.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Contact Support Button inside Left Card */}
+                  <div className="mt-6 pt-6 border-t border-white/[0.06] mt-auto flex justify-center">
+                    <a 
+                      href="https://discord.gg/WpbDuTcAQH" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="h-[30px] px-4 rounded-lg border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white transition-all active:scale-[0.98]"
+                    >
+                      <Headphones size={12} className="text-zinc-400" />
+                      Contact Support
+                    </a>
+                  </div>
+                </div>
+
+                {/* Right Card - Rate Experience */}
+                <div className="rounded-[16px] border border-white/[0.08] bg-white/[0.04] backdrop-blur-[12px] p-6 flex flex-col shadow-2xl">
+                  <h4 className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-4">Rate Your Experience</h4>
+                  
+                  {isSubmitted ? (
+                    <div className="flex-1 flex flex-col items-center justify-center py-6 space-y-3">
+                      <div className="w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                        <CheckCircle2 size={28} className="text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                      </div>
+                      <p className="text-[13px] font-bold text-white uppercase tracking-widest">Thank you for your review!</p>
                     </div>
                   ) : (
                     <form onSubmit={handleSubmitFeedback} className="flex flex-col flex-1">
-                      <div className="mb-4">
-                        <div className="flex items-center gap-2 group cursor-pointer w-max mb-4">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onClick={() => setRating(s)}
-                              onMouseEnter={() => setHoveredRating(s)}
-                              onMouseLeave={() => setHoveredRating(0)}
-                              className="transition-transform active:scale-90 p-1"
-                            >
-                              <Star 
-                                size={28}
-                                className={`transition-all ${
-                                  s <= (hoveredRating || rating)
-                                    ? 'text-white fill-white drop-shadow-[0_0_10px_rgba(255,255,255,0.4)]'
-                                    : 'text-zinc-800'
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
+                      <div className="flex items-center gap-2 mb-5 justify-center">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <button 
+                            key={s} 
+                            type="button" 
+                            onClick={() => setRating(s)} 
+                            onMouseEnter={() => setHoveredRating(s)} 
+                            onMouseLeave={() => setHoveredRating(0)} 
+                            className="transition-transform active:scale-90 p-1"
+                          >
+                            <Star 
+                              size={28} 
+                              className={`transition-all duration-300 ${s <= (hoveredRating || rating) ? 'text-[#FFD700] fill-[#FFD700] drop-shadow-[0_0_12px_rgba(255,215,0,0.6)]' : 'text-zinc-700 hover:text-zinc-500'}`} 
+                            />
+                          </button>
+                        ))}
                       </div>
 
-                      <div className="flex-1 mb-4">
-                        <p className="text-[12px] font-bold text-zinc-500 uppercase tracking-widest mb-3">Your Comments</p>
+                      <div className="flex-1 flex flex-col">
                         <textarea 
                           value={feedback}
                           onChange={(e) => setFeedback(e.target.value)}
-                          placeholder="How can we make your experience better?"
-                          className="w-full h-[120px] bg-white/[0.04] border border-white/[0.06] rounded-xl p-4 text-[14px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/30 transition-all resize-none"
+                          rows={3}
+                          placeholder="Share your experience..."
+                          className="w-full flex-1 bg-black/20 border border-white/[0.05] rounded-xl p-4 text-[13px] text-white placeholder:text-zinc-600 focus:outline-none focus:border-white/20 transition-all resize-none shadow-inner mb-4"
                         />
                       </div>
-
-                      <button 
-                        type="submit"
-                        className="w-full h-[50px] rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[14px] font-semibold shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5 active:scale-[0.98]"
-                      >
-                        Submit Feedback
-                      </button>
+                      
+                      {/* Submit Button inside Right Card */}
+                      <div className="flex justify-end">
+                        <button 
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="h-[30px] px-6 rounded-lg bg-white text-black text-[11px] font-bold hover:bg-zinc-200 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center shadow-lg"
+                        >
+                          {isSubmitting ? 'Submitting...' : 'Submit Review'}
+                        </button>
+                      </div>
                     </form>
                   )}
-                </motion.div>
-              ) : (
-                <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl p-5 flex items-center justify-center">
-                  <p className="text-[11px] text-zinc-500">Feedback will appear after delivery</p>
                 </div>
-              )}
-            </AnimatePresence>
+                
+              </div>
+            </div>
+            
+            {/* Top Right Exit Button for the fixed overlay */}
+            <button 
+              onClick={() => { setIsSuccess(false); setInvoiceData(null); router.push('/'); }}
+              className="absolute top-6 right-6 p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white transition-all z-50 backdrop-blur-md"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-hidden min-h-0">
           {/* ════ LEFT COLUMN ════ */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-2.5 overflow-auto">
             {/* Invoice Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Invoice</span>
                 <span className="text-[10px] font-bold text-blue-400">{data.paymentId || '—'}</span>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {[
                   { label: 'Product',     value: data.productName || '—',              icon: false },
                   { label: 'Email',       value: data.email || data.customerEmail || '—', icon: false },
@@ -818,9 +832,9 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
                   { label: 'Coin',        value: 'Litecoin (LTC)',                      icon: true  },
                 ].map((row) => (
                   <div key={row.label} className="flex items-center justify-between">
-                    <span className="text-zinc-500 text-sm">{row.label}</span>
-                    <span className="text-white text-sm font-semibold flex items-center gap-1.5">
-                      {row.icon && <Bitcoin size={11} className="text-zinc-500" />}
+                    <span className="text-zinc-500 text-xs">{row.label}</span>
+                    <span className="text-white text-xs font-semibold flex items-center gap-1.5">
+                      {row.icon && <Bitcoin size={10} className="text-zinc-500" />}
                       {row.value}
                     </span>
                   </div>
@@ -829,8 +843,8 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
             </div>
 
             {/* Send Exactly Card */}
-            <div className="rounded-2xl border border-blue-500/25 bg-[#0a1628]/90 backdrop-blur-xl p-5">
-              <div className="flex items-center justify-between mb-2">
+            <div className="rounded-xl border border-blue-500/25 bg-[#0a1628]/90 backdrop-blur-xl p-4">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em]">Send Exactly</span>
                 {data.ltcPriceAtTime && (
                   <span className="text-[10px] text-zinc-500">
@@ -838,45 +852,43 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
                   </span>
                 )}
               </div>
-              <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-[2.4rem] font-black text-white tracking-tighter tabular-nums leading-none">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[1.8rem] font-black text-white tracking-tighter tabular-nums leading-none">
                   {data.ltcAmount ?? '—'}
                 </span>
-                <span className="text-blue-400 font-black text-base uppercase">LTC</span>
+                <span className="text-blue-400 font-black text-sm uppercase">LTC</span>
               </div>
-              <p className="text-zinc-500 text-xs mt-2">≈ ${data.usdAmount} USD at current rate</p>
+              <p className="text-zinc-500 text-[11px] mt-1">≈ ${data.usdAmount} USD at current rate</p>
             </div>
 
             {/* Wallet Address Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
-              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block mb-3">Wallet Address</span>
-              <div className="flex items-center gap-3 bg-zinc-950 border border-white/[0.05] rounded-xl px-4 py-3">
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-4">
+              <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] block mb-2">Wallet Address</span>
+              <div className="flex items-center gap-2 bg-zinc-950 border border-white/[0.05] rounded-lg px-3 py-2.5">
                 <span className="text-zinc-300 text-xs font-mono flex-1 truncate">
                   {data.walletAddress || 'No address'}
                 </span>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(data.walletAddress || '');
-                    toast.success('Address copied!', {
-                      style: { background: '#18181b', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }
-                    });
+                    toast.success('Address copied!', { style: { background: '#18181b', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' } });
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-xs font-bold transition-all active:scale-95 shrink-0"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-white text-[11px] font-bold transition-all active:scale-95 shrink-0"
                 >
-                  <Copy size={11} />
+                  <Copy size={10} />
                   Copy
                 </button>
               </div>
             </div>
 
-            {/* Timer Row - Hide when paid/delivered */}
+            {/* Timer Row */}
             {(status === 'pending') && (
-              <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl px-5 py-3.5 flex items-center justify-between">
+              <div className="rounded-xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl px-4 py-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Clock size={14} className="text-blue-400" />
-                  <span className="text-zinc-400 text-sm">Payment expires in</span>
+                  <Clock size={12} className="text-blue-400" />
+                  <span className="text-zinc-400 text-xs">Payment expires in</span>
                 </div>
-                <span className="text-base font-black tabular-nums font-mono text-white">
+                <span className="text-sm font-black tabular-nums font-mono text-white">
                   {data.expiresAt
                     ? <Timer expiresAt={data.expiresAt} onExpire={() => setStatus('expired')} />
                     : '—'}
@@ -887,45 +899,45 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
             {/* Back to Store */}
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-zinc-500 hover:text-white text-sm transition-colors group pt-2 pl-1"
+              className="flex items-center gap-2 text-zinc-500 hover:text-white text-xs transition-colors group pt-1 pl-1"
             >
-              <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
+              <ArrowLeft size={12} className="group-hover:-translate-x-0.5 transition-transform" />
               Back to Store
             </button>
           </div>
 
           {/* ════ RIGHT COLUMN ════ */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             {/* QR Code Card */}
-            <div className="flex-1 rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-8 flex flex-col items-center justify-center">
-              <div className="relative p-4 bg-white rounded-3xl mb-6 shadow-[0_0_40px_rgba(255,255,255,0.05)]">
-                <img src={qrUrl} alt="QR Code" className="w-48 h-48" />
-                <div className="absolute inset-0 border-4 border-black/10 rounded-3xl" />
+            <div className="flex-1 rounded-xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-4 flex flex-col items-center justify-center">
+              <div className="relative p-3 bg-white rounded-2xl mb-3 shadow-[0_0_30px_rgba(255,255,255,0.05)]">
+                <img src={qrUrl} alt="QR Code" className="w-36 h-36" />
+                <div className="absolute inset-0 border-3 border-black/10 rounded-2xl" />
               </div>
-              <h3 className="text-white font-bold text-sm mb-1 uppercase tracking-widest">Litecoin QR</h3>
-              <p className="text-zinc-500 text-xs">Scan with your wallet app</p>
+              <h3 className="text-white font-bold text-xs mb-0.5 uppercase tracking-widest">Litecoin QR</h3>
+              <p className="text-zinc-500 text-[10px]">Scan with your wallet app</p>
             </div>
 
             {/* Status Steps Card */}
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-5">
-              <div className="flex items-center justify-between mb-5">
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d1117]/80 backdrop-blur-xl p-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">Transaction Status</span>
                 <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${statusInfo.bgColor} ${statusInfo.color}`}>
                   {statusInfo.message}
                 </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {steps.map((step, idx) => {
                   const state = getStepState(idx);
                   return (
-                    <div key={idx} className="flex items-center gap-3">
+                    <div key={idx} className="flex items-center gap-2.5">
                       <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 ${
                         state === 'done' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]' :
                         state === 'active' ? 'bg-blue-400 animate-pulse' :
                         'bg-zinc-800'
                       }`} />
-                      <span className={`text-xs font-medium transition-colors duration-500 ${
+                      <span className={`text-[11px] font-medium transition-colors duration-500 ${
                         state === 'done' ? 'text-zinc-300' :
                         state === 'active' ? 'text-white' :
                         'text-zinc-600'
@@ -940,9 +952,9 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
               <button 
                 onClick={handleRefresh}
                 disabled={isRefreshing}
-                className="w-full mt-6 py-2.5 rounded-xl border border-white/5 bg-white/5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full mt-4 py-2 rounded-lg border border-white/5 bg-white/5 text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
+                <RefreshCw size={11} className={isRefreshing ? 'animate-spin' : ''} />
                 {isRefreshing ? 'Syncing...' : 'Refresh Status'}
               </button>
             </div>
@@ -1122,7 +1134,8 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="relative min-h-screen overflow-hidden bg-[#060607] flex items-center"
+      className="relative bg-[#060607]"
+      style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >
       {/* Back / Continue Shopping Button at Top Left */}
       <button 
@@ -1136,9 +1149,9 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
         <span className="text-xs font-medium">{invoiceData ? 'Cancel Payment' : 'Continue Shopping'}</span>
       </button>
 
-      <main className="mx-auto w-full py-16 px-4">
+      <main className="mx-auto w-full flex-1 overflow-hidden flex flex-col px-4 pt-12 pb-0">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between max-w-[1080px] mx-auto w-full">
+        <div className="mb-2 flex items-center justify-between max-w-[1080px] mx-auto w-full shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 backdrop-blur-md">
               <span className="text-xs font-bold tracking-tight text-white">GB</span>

@@ -72,7 +72,7 @@ export async function POST(req: Request) {
     // 6. Generate Payment Details
     const paymentId = `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
     const walletAddress = 'LcWvG5K8PqX8H5Vn7x3mZ2Y6z4N9eB1cQ'; // Placeholder LTC Address
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min expiry
 
     // 7. Create Order (Lock Price)
     const order = await Order.create({

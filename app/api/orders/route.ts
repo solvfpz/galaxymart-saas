@@ -5,15 +5,8 @@ import Product from '@/models/Product';
 
 export async function GET() {
   try {
-    try {
-      await dbConnect();
-    } catch (dbError) {
-      return NextResponse.json(
-        { success: false, message: "Database connection failed" },
-        { status: 503 }
-      );
-    }
-    
+    await dbConnect();
+
     const orders = await Order.find({})
       .populate('productId')
       .sort({ createdAt: -1 });
@@ -25,25 +18,22 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    try {
-      await dbConnect();
-    } catch (dbError) {
-      return NextResponse.json(
-        { success: false, message: "Database connection failed" },
-        { status: 503 }
-      );
-    }
+    await dbConnect();
 
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ success: false, message: 'Invalid payload' }, { status: 400 });
 
-    const order = await Order.create(body);
-    
+    const order = await Order.create({
+      ...body,
+      status: body.status || 'pending',
+      paymentStatus: body.paymentStatus || 'unpaid',
+    });
+
     if (body.productId) {
       await Product.findByIdAndUpdate(body.productId, { $inc: { stock: -1 } });
     }
-    
-    return NextResponse.json(order, { status: 201 });
+
+    return NextResponse.json({ success: true, order }, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: "Error creating order" }, { status: 500 });
   }

@@ -3,7 +3,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IOrder extends Document {
   productId: mongoose.Types.ObjectId;
   customerEmail: string;
-  status: 'pending' | 'confirmed' | 'delivered' | 'expired' | 'manual_paid' | 'paid';
+  status: 'pending' | 'confirmed' | 'delivered' | 'expired' | 'manual';
+  paymentStatus: 'unpaid' | 'paid';
   quantity: number;
   amount: number;
   usdAmount: number;
@@ -20,7 +21,8 @@ const OrderSchema: Schema = new Schema(
   {
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     customerEmail: { type: String, required: true },
-    status: { type: String, enum: ['pending', 'confirmed', 'delivered', 'expired', 'manual_paid', 'paid'], default: 'pending' },
+    status: { type: String, enum: ['pending', 'confirmed', 'delivered', 'expired', 'manual'], default: 'pending' },
+    paymentStatus: { type: String, enum: ['unpaid', 'paid'], default: 'unpaid' },
     quantity: { type: Number, default: 1 },
     amount: { type: Number, required: true },
     usdAmount: { type: Number, required: true },
