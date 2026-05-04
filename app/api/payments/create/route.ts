@@ -28,6 +28,12 @@ export async function POST(req: Request) {
       : product.price;
       
     const quantity = parseInt(productDetails.quantity) || 1;
+
+    const availableStock = product.stock - (product.reservedStock || 0);
+    if (availableStock < quantity) {
+      return NextResponse.json({ success: false, message: 'Not enough stock available' }, { status: 400 });
+    }
+
     let totalPrice = priceValue * quantity;
 
     // 2. Validate Coupon and Apply Discount (Server-side)
@@ -89,8 +95,7 @@ export async function POST(req: Request) {
       expiresAt
     });
 
-    // Reduce stock by quantity
-    await Product.findByIdAndUpdate(productId, { $inc: { stock: -quantity } });
+    await Product.findByIdAndUpdate(productId, { $inc: { reservedStock: quantity } });
 
     // 8. Return to Frontend
     return NextResponse.json({

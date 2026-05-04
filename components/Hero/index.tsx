@@ -106,9 +106,16 @@ export const Hero = () => {
                 hidden: { opacity: 0, y: 20 },
                 visible: { opacity: 1, y: 0 }
               }}
-              className="text-lg sm:text-xl text-zinc-400 mb-12 max-w-2xl font-light leading-relaxed"
+              className="max-w-[560px] leading-[1.7]"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: '16px',
+                fontWeight: 400,
+                color: 'rgba(255,255,255,0.75)',
+                letterSpacing: '0.2px',
+              }}
             >
-              Welcome to Galaxy Mart, where premium entertainment meets unmatched reliability. We don't just provide accounts; we deliver a seamless digital lifestyle. From high-tier streaming to exclusive gaming assets, experience the gold standard of service that sets us apart from the rest.
+              Welcome to <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 font-semibold" style={{ color: 'white' }}>Galaxy Mart</span>, where <span className="text-white font-semibold">premium entertainment</span> meets unmatched reliability. We don't just provide accounts; we deliver a seamless digital lifestyle. From high-tier streaming to exclusive gaming assets, experience the <span className="text-white font-semibold">gold standard</span> of service that sets us apart from the rest.
             </motion.p>
             
             <motion.div 

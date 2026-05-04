@@ -3,6 +3,18 @@ import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 
+async function releaseReservedStock(productId: string, quantity: number) {
+  await Product.findByIdAndUpdate(productId, {
+    $inc: { reservedStock: -quantity }
+  });
+}
+
+async function consumeReservedStock(productId: string, quantity: number) {
+  await Product.findByIdAndUpdate(productId, {
+    $inc: { stock: -quantity, reservedStock: -quantity }
+  });
+}
+
 export async function GET(req: Request) {
   try {
     await dbConnect();
@@ -19,8 +31,8 @@ export async function GET(req: Request) {
     }
 
     const now = new Date();
+    const wasPending = order.status === 'pending';
 
-    // ✅ Auto-expire if past deadline and not already paid/confirmed
     if (
       order.status !== 'confirmed' &&
       order.status !== 'manual' &&
@@ -31,6 +43,10 @@ export async function GET(req: Request) {
         order.status = 'expired';
         order.paymentStatus = 'unpaid';
         await order.save();
+
+        if (wasPending) {
+          await releaseReservedStock(String(order.productId), order.quantity);
+        }
       }
       return NextResponse.json({
         success: true,
@@ -39,8 +55,14 @@ export async function GET(req: Request) {
       });
     }
 
-    // For all paid statuses, fetch product data for delivery details
     if (['delivered', 'confirmed', 'manual'].includes(order.status)) {
+      if (wasPending) {
+        await consumeReservedStock(String(order.productId), order.quantity);
+        order.status = order.status;
+        order.paymentStatus = 'paid';
+        await order.save();
+      }
+
       const product = await Product.findById(order.productId).lean() as any;
       const deliveredItems: string[] = product?.serials?.slice(0, order.quantity) ?? [];
       return NextResponse.json({
@@ -56,7 +78,6 @@ export async function GET(req: Request) {
       });
     }
 
-    // pending — still waiting for real payment
     return NextResponse.json({
       success: true,
       status: 'pending',

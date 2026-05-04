@@ -50,13 +50,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       deliverableType: body.deliverableType || 'Serials',
       serials: body.serials || [],
       webhookUrl: body.webhookUrl || '',
-      stock: body.stock || 0,
+      stock: body.stock !== undefined ? body.stock : undefined,
+      reservedStock: body.reservedStock !== undefined ? body.reservedStock : undefined,
       deliveryMethod: body.deliveryMethod || 'Random',
       visibility: body.visibility || 'Public',
       currency: body.currency || 'USD'
     };
 
-    const product = await Product.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
+    const filteredPayload = Object.fromEntries(
+      Object.entries(updatePayload).filter(([_, v]) => v !== undefined)
+    );
+
+    const product = await Product.findByIdAndUpdate(id, filteredPayload, { new: true, runValidators: true });
     if (!product) return NextResponse.json({ success: false, message: 'Product not found' }, { status: 404 });
     
     return NextResponse.json({ success: true, product });

@@ -23,15 +23,23 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => null);
     if (!body) return NextResponse.json({ success: false, message: 'Invalid payload' }, { status: 400 });
 
+    if (body.productId) {
+      const product = await Product.findById(body.productId);
+      if (product) {
+        const availableStock = product.stock - (product.reservedStock || 0);
+        const quantity = body.quantity || 1;
+        if (availableStock < quantity) {
+          return NextResponse.json({ success: false, message: 'Not enough stock available' }, { status: 400 });
+        }
+        await Product.findByIdAndUpdate(body.productId, { $inc: { reservedStock: quantity } });
+      }
+    }
+
     const order = await Order.create({
       ...body,
       status: body.status || 'pending',
       paymentStatus: body.paymentStatus || 'unpaid',
     });
-
-    if (body.productId) {
-      await Product.findByIdAndUpdate(body.productId, { $inc: { stock: -1 } });
-    }
 
     return NextResponse.json({ success: true, order }, { status: 201 });
   } catch (error: any) {

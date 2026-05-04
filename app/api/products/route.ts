@@ -46,6 +46,7 @@ export async function POST(req: Request) {
       serials: body.serials || [],
       webhookUrl: body.webhookUrl || '',
       stock: body.stock || 0,
+      reservedStock: 0,
       deliveryMethod: body.deliveryMethod || 'Random',
       visibility: body.visibility || 'Public',
       currency: body.currency || 'USD'

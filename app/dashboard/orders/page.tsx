@@ -127,7 +127,7 @@ export default function OrdersPage() {
 
     return (
       <span className={cn(
-        'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border shadow-sm backdrop-blur-md',
+        'inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-medium border shadow-sm backdrop-blur-md h-6 whitespace-nowrap',
         config.bg, config.text, config.border, config.glow
       )}>
         {status.replace('_', ' ')}
@@ -199,18 +199,17 @@ export default function OrdersPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/10 bg-zinc-900/40 overflow-hidden">
-          <div className="grid grid-cols-[auto_1fr_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-2 text-xs font-medium text-zinc-500 uppercase tracking-wider border-b border-white/5">
-            <span className="w-7"></span>
+        <div className="rounded-xl border border-white/10 bg-zinc-900/40">
+          <div className="grid grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider border-b border-white/5 rounded-t-xl bg-zinc-900/40">
             <span>Customer</span>
             <span className="hidden md:block">Product</span>
             <span className="text-right">Amount</span>
-            <span>Status</span>
-            <span className="hidden sm:block">Date</span>
-            <span className="w-28"></span>
+            <span className="text-center">Status</span>
+            <span className="hidden sm:block text-right">Date</span>
+            <span></span>
           </div>
 
-          <div className="divide-y divide-white/5">
+          <div>
             {filteredOrders.map((order) => {
               const date = formatDate(order.createdAt);
               const isUpdating = updatingId === order._id;
@@ -220,21 +219,21 @@ export default function OrdersPage() {
                 <div
                   key={order._id}
                   className={cn(
-                    'grid grid-cols-[auto_1fr_1fr_auto_auto_auto_auto] items-center gap-3 px-4 py-2.5',
-                    'hover:bg-white/5 transition-colors duration-150',
+                    'grid grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-4',
+                    'border-b border-white/5 last:border-b-0',
+                    'hover:bg-white/[0.02] transition-colors duration-150',
                     isUpdating && 'opacity-50 pointer-events-none'
                   )}
                 >
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                    {getEmailInitial(order.customerEmail)}
-                  </div>
-
-                  <div className="min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                      {getEmailInitial(order.customerEmail)}
+                    </div>
                     <p className="text-sm font-medium text-foreground truncate">{order.customerEmail}</p>
                   </div>
 
                   <div className="min-w-0 hidden md:block">
-                    <p className="text-xs text-zinc-400 truncate">
+                    <p className="text-sm truncate opacity-70 text-zinc-300">
                       {order.productId?.name || <span className="italic">Deleted Product</span>}
                       <span className="text-zinc-600 ml-1">×{order.quantity}</span>
                     </p>
@@ -242,16 +241,16 @@ export default function OrdersPage() {
 
                   <div className="text-right">
                     <p className="text-sm font-semibold text-foreground">${order.usdAmount?.toFixed(2) || order.amount.toFixed(2)}</p>
-                    <p className="text-xs text-zinc-500 hidden lg:block">{order.ltcAmount?.toFixed(8)} LTC</p>
+                    <p className="text-xs text-zinc-500 hidden lg:block mt-0.5">{order.ltcAmount?.toFixed(8)} LTC</p>
                   </div>
 
-                  <div>{getStatusBadge(order.status)}</div>
+                  <div className="flex justify-center">{getStatusBadge(order.status)}</div>
 
-                  <div className="hidden sm:block">
+                  <div className="hidden sm:block text-right">
                     <p className="text-xs text-zinc-500">{date}</p>
                   </div>
 
-                  <div className="relative flex items-center justify-end w-28">
+                  <div className="relative flex items-center justify-end">
                     <div className="flex items-center gap-0.5">
                       {order.status === 'pending' && (
                         <button

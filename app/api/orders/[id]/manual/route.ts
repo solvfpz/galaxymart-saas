@@ -1,18 +1,14 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
+import Product from '@/models/Product';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await dbConnect();
     const { id } = await params;
 
-    const order = await Order.findByIdAndUpdate(
-      id,
-      { status: 'manual', paymentStatus: 'paid' },
-      { new: true, runValidators: true }
-    ).populate('productId');
-
+    const order = await Order.findById(id);
     if (!order) {
       return NextResponse.json(
         { success: false, message: 'Order not found' },
@@ -20,10 +16,28 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       );
     }
 
+    const oldStatus = order.status;
+    const quantity = order.quantity;
+
+    order.status = 'manual';
+    order.paymentStatus = 'paid';
+    await order.save();
+
+    if (oldStatus === 'pending') {
+      await Product.findByIdAndUpdate(order.productId, {
+        $inc: { stock: -quantity, reservedStock: -quantity }
+      });
+    } else if (oldStatus === 'expired') {
+      await Product.findByIdAndUpdate(order.productId, {
+        $inc: { stock: -quantity, reservedStock: -quantity }
+      });
+    } else if (oldStatus === 'confirmed' || oldStatus === 'delivered') {
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Order marked as manually paid',
-      order
+      order: await Order.findById(id).populate('productId')
     });
   } catch (error: any) {
     return NextResponse.json(

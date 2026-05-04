@@ -70,7 +70,7 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="mt-8">
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" suppressHydrationWarning>
             {error && (
               <div className="bg-red-500/10 border border-red-500/50 text-red-500 text-sm p-3 rounded-md text-center">
                 {error}
@@ -95,6 +95,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -117,6 +118,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
+                  suppressHydrationWarning
                 />
               </div>
             </div>
@@ -144,6 +146,7 @@ export default function LoginPage() {
                 type="submit" 
                 disabled={isLoading}
                 className="flex w-full justify-center items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-zinc-950 shadow-sm hover:bg-zinc-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                suppressHydrationWarning
               >
                 {isLoading ? "Signing in..." : "Sign in"}
                 {!isLoading && <Icon icon="solar:arrow-right-linear" strokeWidth="1.5" className="text-base" />}

@@ -327,14 +327,14 @@ const Features = () => {
 const ProductCard = ({ product, index }: { product: any, index: number }) => {
   const router = useRouter();
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-  const [stock, setStock] = useState(product.stock || 0);
+  const [stock, setStock] = useState((product.stock || 0) - (product.reservedStock || 0));
 
   useEffect(() => {
     const pollStock = async () => {
       try {
         const res = await fetch(`/api/products/${product._id || product.id}`);
         const data = await res.json();
-        if (data.success) setStock(data.product.stock);
+        if (data.success) setStock(data.product.stock - (data.product.reservedStock || 0));
       } catch (err) {}
     };
     const interval = setInterval(pollStock, 10000);
@@ -1021,7 +1021,7 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
   const [isSuccess, setIsSuccess] = useState(false);
   
   const product = (dbProducts || []).find((p: any) => p._id === id || p.id === id);
-  const [liveStock, setLiveStock] = useState(product?.stock || 0);
+  const [liveStock, setLiveStock] = useState((product?.stock || 0) - (product?.reservedStock || 0));
 
   useEffect(() => {
     if (!product) return;
@@ -1029,7 +1029,7 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
       try {
         const res = await fetch(`/api/products/${product?._id || product?.id}`);
         const data = await res.json();
-        if (data.success) setLiveStock(data.product.stock);
+        if (data.success) setLiveStock(data.product.stock - (data.product.reservedStock || 0));
       } catch (err) {}
     };
     const interval = setInterval(pollStock, 5000);

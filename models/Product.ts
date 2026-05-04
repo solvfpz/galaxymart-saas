@@ -11,6 +11,7 @@ export interface IProduct extends Document {
   serials: string[];
   webhookUrl?: string;
   stock: number;
+  reservedStock: number;
   deliveryMethod: 'First' | 'Last' | 'Random';
   visibility: 'Public' | 'Private' | 'Unlisted' | 'Onhold';
   currency: 'USD' | 'EUR';
@@ -34,6 +35,7 @@ const ProductSchema: Schema = new Schema(
     serials: { type: [String], default: [] },
     webhookUrl: { type: String, default: '' },
     stock: { type: Number, default: 0 },
+    reservedStock: { type: Number, default: 0 },
     deliveryMethod: { 
       type: String, 
       enum: ['First', 'Last', 'Random'], 
@@ -53,9 +55,4 @@ const ProductSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-// Delete the cached model if it exists so Next.js hot-reloads don't use the old schema
-if (mongoose.models.Product) {
-  delete mongoose.models.Product;
-}
-
-export default mongoose.model<IProduct>('Product', ProductSchema);
+export default mongoose.models.Product || mongoose.model<IProduct>('Product', ProductSchema);
