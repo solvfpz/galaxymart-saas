@@ -1,0 +1,7 @@
+vendor/
+node_modules/
+.git/
+.env
+.DS_Store
+storage/framework/cache/data/*
+*.log
