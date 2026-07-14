@@ -1700,7 +1700,7 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
   const offsetRef = useRef(0);
   const hoveredRef = useRef(false);
   const setWidthRef = useRef(0);
-  const displayItems = [...items, ...items, ...items, ...items];
+  const displayItems = [...items, ...items];
 
   useEffect(() => {
     const el = trackRef.current;
@@ -1715,11 +1715,11 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
 
       if (!hoveredRef.current) {
         if (setWidthRef.current === 0) {
-          setWidthRef.current = el.scrollWidth / 4;
+          setWidthRef.current = el.scrollWidth / 2;
         }
 
         let offset = offsetRef.current;
-        const step = delta * 0.06;
+        const step = delta * 0.05;
         const setW = setWidthRef.current;
 
         if (direction === 'right') {
@@ -1750,7 +1750,8 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
     >
       <div
         ref={trackRef}
-        className="flex gap-3 will-change-transform"
+        className="flex gap-5 will-change-transform"
+        style={{ width: 'max-content' }}
       >
         {displayItems.map((review, idx) => (
           <ReviewCard key={`${review._id || idx}-${idx}`} review={review} />
@@ -1785,7 +1786,7 @@ const ReviewsSection = () => {
 
   return (
     <section id="reviews" className="py-16 bg-black relative overflow-hidden w-full border-y border-white/5">
-      <div className="max-w-[1400px] mx-auto relative px-4 sm:px-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1800,38 +1801,38 @@ const ReviewsSection = () => {
             Real feedback from thousands of satisfied members across the galaxy.
           </p>
         </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="w-full relative"
-        >
-          {loading ? (
-            <div className="flex gap-3 overflow-hidden py-2">
-              {[1, 2, 3, 4, 5].map(i => <ReviewSkeleton key={i} />)}
-            </div>
-          ) : reviews.length > 0 ? (
-            <>
-              <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
-              <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
-              <div className="space-y-6">
-                <MarqueeRow items={reviews} direction="right" />
-                <div className="opacity-[0.95]">
-                  <MarqueeRow items={shuffled} direction="left" />
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="py-8 text-center">
-              <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 border border-white/10">
-                <Star className="w-5 h-5 text-zinc-600" />
-              </div>
-              <p className="text-zinc-500 font-medium tracking-tight text-sm">No reviews yet. Be the first to leave one!</p>
-            </div>
-          )}
-        </motion.div>
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        className="w-full relative"
+      >
+        {loading ? (
+          <div className="flex gap-3 overflow-hidden py-2 px-4 sm:px-8">
+            {[1, 2, 3, 4, 5].map(i => <ReviewSkeleton key={i} />)}
+          </div>
+        ) : reviews.length > 0 ? (
+          <>
+            <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
+            <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
+            <div className="space-y-6">
+              <MarqueeRow items={reviews} direction="right" />
+              <div className="opacity-[0.95]">
+                <MarqueeRow items={shuffled} direction="left" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="py-8 text-center">
+            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 border border-white/10">
+              <Star className="w-5 h-5 text-zinc-600" />
+            </div>
+            <p className="text-zinc-500 font-medium tracking-tight text-sm">No reviews yet. Be the first to leave one!</p>
+          </div>
+        )}
+      </motion.div>
     </section>
   );
 };
