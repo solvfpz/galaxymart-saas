@@ -1657,7 +1657,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 const ReviewCard = React.memo(({ review }: { review: any }) => {
   return (
-    <div className="relative overflow-hidden w-[230px] sm:w-[260px] shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-3.5 flex flex-col justify-between transition-all duration-300 hover:border-white/[0.15] hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] will-change-transform group">
+    <div className="relative overflow-hidden w-[210px] sm:w-[240px] shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-3 flex flex-col justify-between transition-all duration-300 hover:border-white/[0.15] hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] will-change-transform group">
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.07] via-white/[0.02] to-transparent pointer-events-none rounded-xl" />
       <div className="absolute -top-12 -right-12 w-24 h-24 bg-white/[0.03] rounded-full blur-xl pointer-events-none" />
       <div className="relative z-0">
@@ -1683,7 +1683,7 @@ const ReviewCard = React.memo(({ review }: { review: any }) => {
 ReviewCard.displayName = 'ReviewCard';
 
 const ReviewSkeleton = () => (
-  <div className="w-[230px] sm:w-[260px] shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3.5 animate-pulse">
+  <div className="w-[210px] sm:w-[240px] shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 animate-pulse">
     <div className="flex gap-1 mb-3">
       {[1, 2, 3, 4, 5].map(i => <div key={i} className="w-3 h-3 bg-white/5 rounded-full" />)}
     </div>
@@ -1703,7 +1703,7 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
   const offsetRef = useRef(0);
   const hoveredRef = useRef(false);
   const setWidthRef = useRef(0);
-  const displayItems = [...items, ...items];
+  const displayItems = [...items, ...items, ...items, ...items];
 
   useEffect(() => {
     const el = trackRef.current;
@@ -1718,11 +1718,11 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
 
       if (!hoveredRef.current) {
         if (setWidthRef.current === 0) {
-          setWidthRef.current = el.scrollWidth / 2;
+          setWidthRef.current = el.scrollWidth / 4;
         }
 
         let offset = offsetRef.current;
-        const step = delta * 0.05;
+        const step = delta * 0.04;
         const setW = setWidthRef.current;
 
         if (direction === 'right') {
