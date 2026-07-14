@@ -452,7 +452,10 @@ const Products = ({ dbProducts }: { dbProducts?: any[] }) => {
           <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-4">
             Our Products
           </h2>
-          <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto"></div>
+          <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto mb-4"></div>
+          <p className="text-white/60 text-base max-w-xl mx-auto">
+            Premium digital services trusted by thousands of satisfied customers.
+          </p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1793,10 +1796,10 @@ const ReviewsSection = () => {
           viewport={{ once: true }}
           className="text-center mb-10"
         >
-          <h2 className="font-display text-3xl lg:text-4xl font-bold text-white mb-3">
+          <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-3">
             Voices of the Community
           </h2>
-          <div className="h-0.5 w-12 bg-blue-600 rounded-full mx-auto mb-4" />
+          <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto mb-4" />
           <p className="text-white/60 text-base max-w-xl mx-auto">
             Real feedback from thousands of satisfied members across the galaxy.
           </p>
@@ -1862,10 +1865,13 @@ export default function Landing({ dbProducts }: { dbProducts?: any[] }) {
       <section id="faq" className="py-20 bg-black relative overflow-hidden w-full">
         <div className="max-w-[1200px] mx-auto px-8 relative">
           <div className="text-center mb-12">
-            <h2 className="font-display text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+            <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
               Frequently Asked Questions
             </h2>
-            <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto"></div>
+            <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto mb-4"></div>
+            <p className="text-white/60 text-base max-w-xl mx-auto">
+              Got questions? We've got answers.
+            </p>
           </div>
           
           <div className="max-w-2xl mx-auto space-y-2">
