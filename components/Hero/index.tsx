@@ -1,11 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Zap, Lock } from 'lucide-react';
 import DarkVeil from './DarkVeil';
 
 export const Hero = () => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
+
+  useEffect(() => {
+    const check = () => {
+      const w = window.innerWidth;
+      setIsMobile(w <= 768);
+      setIsTablet(w >= 769 && w <= 1024);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   return (
-    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center bg-[#020202] pt-20 pb-[60px] sm:pb-[80px]">
+    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center bg-[#020202] pt-20 pb-[60px] sm:pb-[80px]"
+      style={
+        isMobile
+          ? { padding: '100px 20px 60px 20px', overflowX: 'hidden', width: '100%' }
+          : isTablet
+            ? { padding: '120px 40px 80px 40px', overflowX: 'hidden', width: '100%', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }
+            : {}
+      }
+    >
       {/* DarkVeil Background Container */}
       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none min-h-[500px]">
         <DarkVeil
@@ -39,35 +61,42 @@ export const Hero = () => {
             }}
             className="max-w-4xl -mt-[40px] md:-mt-[80px]"
           >
-            <motion.h1
+              <motion.h1
               variants={{
                 hidden: { opacity: 0, y: 30 },
                 visible: { opacity: 1, y: 0 }
               }}
-              className="hero-headline text-[38px] sm:text-[48px] lg:text-[66px] font-bold text-white leading-[1.1] max-w-[750px]"
-              style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.5px' }}
+              className="hero-headline font-bold text-white"
+              style={{ 
+                fontFamily: "'Inter', sans-serif", 
+                letterSpacing: '-0.5px',
+                fontSize: 'clamp(32px, 4.5vw, 56px)',
+                lineHeight: '1.1',
+              }}
             >
-              {/* Line 1 — LEFT aligned with whole sentence */}
-              <span
-                style={{
-                  display: 'block',
-                  textAlign: 'center',
-                  marginLeft: '-130px',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                Quality That Never{' '} <span className="text-[#00AAFF]">Compromises.</span>
+              <span style={{ 
+                display: 'block',
+                textAlign: isMobile ? 'center' : 'left',
+                whiteSpace: isMobile ? 'normal' : 'nowrap',
+                marginLeft: isMobile ? '0' : 'clamp(0px, 3vw, 40px)',
+                fontSize: isMobile ? '30px' 
+                        : isTablet ? '40px' 
+                        : 'clamp(32px, 4.5vw, 56px)',
+                wordBreak: 'break-word',
+              }}>
+                Quality That Never{' '}
+                <span style={{ color: '#00AAFF' }}>Compromises.</span>
               </span>
 
-              {/* Line 2 — CENTER aligned independently */}
-              <span
-                style={{
-                  display: 'block',
-                  textAlign: 'center',
-                  marginLeft: '0px'
-                }}
-              >
-                <span className="text-[#00AAFF]">Always</span> Instant.
+              <span style={{ 
+                display: 'block',
+                textAlign: 'center',
+                fontSize: isMobile ? '26px' 
+                        : isTablet ? '34px' 
+                        : 'clamp(28px, 3.8vw, 48px)',
+                marginLeft: '0',
+              }}>
+                <span style={{ color: '#00AAFF' }}>Always</span> Instant.
               </span>
             </motion.h1>
 
@@ -88,7 +117,12 @@ export const Hero = () => {
                 visible: { opacity: 1, y: 0 }
               }}
               className="hero-body text-[13px] sm:text-[14px] lg:text-[15px] font-normal text-center leading-[1.7] max-w-[480px] mx-auto mt-[20px]"
-              style={{ color: 'rgba(255,255,255,0.65)', fontFamily: "'Inter', sans-serif" }}
+              style={{
+                color: 'rgba(255,255,255,0.65)',
+                fontFamily: "'Inter', sans-serif",
+                ...(isMobile ? { fontSize: 14, maxWidth: '100%', padding: '0 10px', wordBreak: 'break-word' } : {}),
+                ...(isTablet ? { fontSize: 15, maxWidth: 560, padding: 0 } : {}),
+              }}
             >
               Premium Discord services built for speed, reliability, and instant delivery. Trusted by thousands of customers worldwide.
             </motion.p>
@@ -99,6 +133,13 @@ export const Hero = () => {
                 visible: { opacity: 1, y: 0 }
               }}
               className="hero-headline flex flex-wrap justify-center gap-[10px] mt-[32px]"
+              style={
+                isMobile
+                  ? { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 8, padding: '0 10px' }
+                  : isTablet
+                    ? { display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }
+                    : {}
+              }
             >
               {[
                 { icon: <Shield size={12} />, label: "Secure Payments" },
@@ -111,7 +152,9 @@ export const Hero = () => {
                   style={{
                     borderColor: 'rgba(255,255,255,0.15)',
                     background: 'rgba(255,255,255,0.07)',
-                    fontFamily: "'Inter', sans-serif"
+                    fontFamily: "'Inter', sans-serif",
+                    ...(isMobile ? { fontSize: 12, padding: '7px 14px' } : {}),
+                    ...(isTablet ? { fontSize: 13, padding: '8px 16px' } : {}),
                   }}
                 >
                   <span className="text-[#00AAFF] shrink-0">{pill.icon}</span>

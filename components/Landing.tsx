@@ -56,8 +56,6 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import Link from 'next/link';
-import Lenis from 'lenis';
-import 'lenis/dist/lenis.css';
 import { Hero } from './Hero';
 import AnimatedLogo from './AnimatedLogo';
 
@@ -100,36 +98,48 @@ const Navbar = () => {
           <div className="hidden md:flex items-center gap-8 relative z-10">
             <div className="flex items-center gap-6">
               {['Features', 'Products', 'Reviews', 'FAQ', 'TOS'].map((item) => (
-                <a 
-                  key={item}
-                  className="text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-300 tracking-wide" 
-                  href={`#${item.toLowerCase()}`}
-                >
-                  {item}
-                </a>
+                item === 'TOS' ? (
+                  <a
+                    key={item}
+                    className="text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-300 tracking-wide"
+                    href="#tos"
+                  >
+                    {item}
+                  </a>
+                ) : (
+                  <button
+                    key={item}
+                    onClick={() => {
+                      const section = document.getElementById(item.toLowerCase());
+                      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }}
+                    className="text-[13px] font-medium text-zinc-400 hover:text-white transition-colors duration-300 tracking-wide bg-transparent border-none cursor-pointer"
+                  >
+                    {item}
+                  </button>
+                )
               ))}
             </div>
 
-            <div className="relative group flex flex-col items-center justify-center">
-              {/* Interaction Circle (Customer Support Button) */}
-              <button className="w-9 h-9 rounded-full bg-black border border-white/[0.08] flex items-center justify-center shadow-lg hover:bg-[#111] hover:border-white/[0.15] hover:scale-105 cursor-pointer transition-all duration-300 relative z-20 focus:outline-none">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-white">
-                  <path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/>
-                  <path d="M21 16v2a4 4 0 0 1-4 4h-5"/>
-                </svg>
-              </button>
-
-              {/* Popup Menu (Reveals on Hover, Drops Downwards) */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 -translate-y-3 pointer-events-none transition-all duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto z-10">
-                {/* Floating Black Panel */}
-                <div className="bg-black rounded-xl w-32 p-4 shadow-[0_20px_40px_-10px_rgba(0,0,0,1)] border border-white/[0.08] backdrop-blur-md transition-all duration-300 group-hover:border-white/[0.12] group-hover:shadow-[0_20px_40px_-10px_rgba(0,0,0,1),0_0_20px_rgba(255,255,255,0.03)]">
-                  <div className="flex flex-col gap-3 text-left">
-                    <a href="https://discord.gg/galaxymart" className="text-xs font-medium text-zinc-100 tracking-wide transition-colors hover:text-white">Discord</a>
-                    <a href="https://t.me/galxymart" className="text-xs font-medium text-zinc-500 tracking-wide transition-colors hover:text-zinc-300">Telegram</a>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <button
+              onClick={() => window.open('https://t.me/galxymart', '_blank')}
+              className="flex items-center gap-1 bg-white/[0.08] border border-white/[0.15] rounded-full px-2.5 py-1 text-white text-[12px] font-medium hover:bg-white/[0.14] transition-colors duration-300 cursor-pointer"
+              style={{ gap: '5px' }}
+            >
+              <img
+                src="https://img.icons8.com/color/48/telegram-app--v1.png"
+                alt="Telegram"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  borderRadius: '50%',
+                  objectFit: 'contain',
+                  marginLeft: '-2px',
+                  flexShrink: 0,
+                }}
+              />
+              Chat
+            </button>
           </div>
 
           <button 
@@ -1603,6 +1613,14 @@ const Magnetic = ({ children }: { children: React.ReactNode; key?: React.Key }) 
 const Footer = () => {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current) return;
@@ -1628,97 +1646,135 @@ const Footer = () => {
     <footer 
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className="relative bg-black pt-24 pb-10 overflow-hidden border-t border-white/5 w-full"
+      className="relative bg-black overflow-hidden border-t border-white/5 w-full"
+      style={isMobile ? { padding: '40px 20px 30px' } : { paddingTop: 96, paddingBottom: 40 }}
     >
-      {/* Sheryians-style Large Text Effect */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden pointer-events-none select-none">
-        <div className="relative text-center">
-          {/* Outlined Background Text */}
-          <div className="flex flex-col leading-[0.75]">
-            <h1 
-              className="text-[16vw] font-black tracking-tighter opacity-10"
-              style={{ 
-                WebkitTextStroke: '1px rgba(255, 255, 255, 0.5)',
-                color: 'transparent'
-              }}
-            >
-              GALAXY
-            </h1>
-            <h1 
-              className="text-[16vw] font-black tracking-tighter opacity-10"
-              style={{ 
-                WebkitTextStroke: '1px rgba(255, 255, 255, 0.5)',
-                color: 'transparent'
-              }}
-            >
-              BOOSTS
-            </h1>
-          </div>
-          
-          {/* Reveal Text with Mouse Mask */}
-          <div className="absolute inset-0 flex flex-col leading-[0.75]">
-            <h1 
-              className="text-[16vw] font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
-              style={{ 
-                maskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`,
-                WebkitMaskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`
-              }}
-            >
-              GALAXY
-            </h1>
-            <h1 
-              className="text-[16vw] font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
-              style={{ 
-                maskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`,
-                WebkitMaskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`
-              }}
-            >
-              BOOSTS
-            </h1>
+      {/* Sheryians-style Large Text Effect — hidden on mobile */}
+      {!isMobile && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center overflow-hidden pointer-events-none select-none">
+          <div className="relative text-center">
+            {/* Outlined Background Text */}
+            <div className="flex flex-col leading-[0.75]">
+              <h1 
+                className="text-[16vw] font-black tracking-tighter opacity-10"
+                style={{ 
+                  WebkitTextStroke: '1px rgba(255, 255, 255, 0.5)',
+                  color: 'transparent'
+                }}
+              >
+                GALAXY
+              </h1>
+              <h1 
+                className="text-[16vw] font-black tracking-tighter opacity-10"
+                style={{ 
+                  WebkitTextStroke: '1px rgba(255, 255, 255, 0.5)',
+                  color: 'transparent'
+                }}
+              >
+                BOOSTS
+              </h1>
+            </div>
+            
+            {/* Reveal Text with Mouse Mask */}
+            <div className="absolute inset-0 flex flex-col leading-[0.75]">
+              <h1 
+                className="text-[16vw] font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
+                style={{ 
+                  maskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`,
+                  WebkitMaskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`
+                }}
+              >
+                GALAXY
+              </h1>
+              <h1 
+                className="text-[16vw] font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400"
+                style={{ 
+                  maskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`,
+                  WebkitMaskImage: `radial-gradient(circle 300px at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent 100%)`
+                }}
+              >
+                BOOSTS
+              </h1>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="max-w-[1200px] mx-auto px-8 sm:px-12 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4         gap-8 sm:gap-12 mb-16 sm:mb-24">
-          <div className="lg:col-span-1">
-            <Magnetic>
-              <a className="flex items-center gap-3 text-2xl sm:text-3xl font-bold text-white tracking-tighter mb-6" href="/">
-                <AnimatedLogo className="h-10 w-10" />
-                GalaxyBoosts
-              </a>
-            </Magnetic>
-            <p className="text-zinc-500 text-sm leading-relaxed max-w-[200px]">
-              The leading provider for premium Discord enhancement products and accounts.
-            </p>
-          </div>
-
-          <div className="lg:col-span-3 flex flex-col sm:flex-row gap-8 sm:gap-12 lg:justify-end">
-            {sections.map((s, i) => (
-            <motion.div 
-              key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
-              <h3 className="text-white font-bold mb-8 uppercase text-[10px] tracking-[0.3em] opacity-30">{s.title}</h3>
-              <ul className="space-y-4">
-                {s.links.map((link, j) => (
-                  <li key={j}>
-                    <a className="text-zinc-500 hover:text-white transition-all duration-300 text-sm font-medium flex items-center group" href="#">
-                      <span className="w-0 group-hover:w-2 h-[1px] bg-blue-500 mr-0 group-hover:mr-2 transition-all duration-300"></span>
-                      {link}
-                    </a>
-                  </li>
+      <div className="max-w-[1200px] mx-auto relative z-10"
+        style={isMobile ? { padding: '0' } : { paddingLeft: 32, paddingRight: 32 }}
+      >
+        <div className={isMobile ? '' : 'grid grid-cols-1 lg:grid-cols-4 gap-8 sm:gap-12 mb-16 sm:mb-24'}>
+          {isMobile ? (
+            <>
+              {/* Mobile layout */}
+              <div style={{ textAlign: 'center', marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 8 }}>
+                  <AnimatedLogo className="h-10 w-10" />
+                  <span className="text-2xl font-bold text-white tracking-tighter">GalaxyBoosts</span>
+                </div>
+                <p style={{ fontSize: 13, maxWidth: 260, margin: '8px auto 0', lineHeight: 1.5, color: 'rgba(255,255,255,0.5)' }}>
+                  The leading provider for premium Discord enhancement products and accounts.
+                </p>
+              </div>
+              <div className="footer-links-wrapper" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px', width: '100%', padding: '0 10px' }}>
+                {sections.map((s, i) => (
+                  <div key={s.title} style={i === 1 ? { justifySelf: 'end', textAlign: 'right' } : {}}>
+                    <h4 style={{ fontSize: 11, letterSpacing: '1.5px', marginBottom: 12, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', fontWeight: 700 }}>{s.title}</h4>
+                    {s.links.map((link) => (
+                      <a key={link} href="#" style={{ display: 'block', fontSize: 13, marginBottom: 10, color: 'rgba(255,255,255,0.7)', textDecoration: 'none' }}>{link}</a>
+                    ))}
+                  </div>
                 ))}
-              </ul>
-            </motion.div>
-          ))}
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="lg:col-span-1">
+                <Magnetic>
+                  <a className="flex items-center gap-3 text-2xl sm:text-3xl font-bold text-white tracking-tighter mb-6" href="/">
+                    <AnimatedLogo className="h-10 w-10" />
+                    GalaxyBoosts
+                  </a>
+                </Magnetic>
+                <p className="text-zinc-500 text-sm leading-relaxed max-w-[200px]">
+                  The leading provider for premium Discord enhancement products and accounts.
+                </p>
+              </div>
+
+              <div className="lg:col-span-3 flex flex-col sm:flex-row gap-8 sm:gap-12 lg:justify-end">
+                {sections.map((s, i) => (
+                <motion.div 
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <h3 className="text-white font-bold mb-8 uppercase text-[10px] tracking-[0.3em] opacity-30">{s.title}</h3>
+                  <ul className="space-y-4">
+                    {s.links.map((link, j) => (
+                      <li key={j}>
+                        <a className="text-zinc-500 hover:text-white transition-all duration-300 text-sm font-medium flex items-center group" href="#">
+                          <span className="w-0 group-hover:w-2 h-[1px] bg-blue-500 mr-0 group-hover:mr-2 transition-all duration-300"></span>
+                          {link}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </motion.div>
+              ))}
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="pt-12 border-t border-white/5"></div>
+        <div style={isMobile ? { textAlign: 'center', fontSize: 11, marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.3)' } : { paddingTop: 48, borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+          {isMobile ? (
+            <>&copy; {new Date().getFullYear()} Galaxy Boosts. All rights reserved.</>
+          ) : (
+            <div className="max-w-[1200px] mx-auto px-8 sm:px-12" />
+          )}
+        </div>
       </div>
     </footer>
   );
@@ -1769,22 +1825,58 @@ import { formatDistanceToNow } from 'date-fns';
 
 const ReviewCard = React.memo(({ review }: { review: any }) => {
   return (
-    <div className="relative overflow-hidden w-[210px] sm:w-[240px] shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-3 flex flex-col justify-between transition-all duration-300 hover:border-white/[0.15] hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] will-change-transform group">
+    <div
+      className="relative shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl transition-all duration-300 hover:border-white/[0.15] hover:shadow-[0_0_24px_rgba(59,130,246,0.12)] will-change-transform group"
+      style={{
+        minWidth: 280,
+        maxWidth: 280,
+        width: 280,
+        height: 'auto',
+        minHeight: 140,
+        flexShrink: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: 16,
+        gap: 8,
+        overflow: 'hidden',
+        whiteSpace: 'normal',
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+      }}
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-white/[0.07] via-white/[0.02] to-transparent pointer-events-none rounded-xl" />
       <div className="absolute -top-12 -right-12 w-24 h-24 bg-white/[0.03] rounded-full blur-xl pointer-events-none" />
-      <div className="relative z-0">
-        <div className="flex items-center gap-0.5 mb-2.5">
+      <div className="relative z-0 flex flex-col gap-2">
+        <div className="flex items-center gap-0.5" style={{ fontSize: 14, marginBottom: 6 }}>
           {[...Array(5)].map((_, i) => (
             <Star key={i} className={`w-3 h-3 ${i < review.starRating ? 'text-white fill-white' : 'text-zinc-700 fill-zinc-700'}`} />
           ))}
         </div>
-        <p className="text-zinc-300 text-xs leading-relaxed font-medium line-clamp-3">
+        <p
+          className="font-medium"
+          style={{
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: 'rgba(255,255,255,0.85)',
+            display: '-webkit-box',
+            WebkitLineClamp: 3,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            whiteSpace: 'normal',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+          }}
+        >
           &ldquo;{review.reviewText}&rdquo;
         </p>
       </div>
-      <div className="relative z-0 mt-3 flex items-center justify-between border-t border-white/[0.04] pt-2.5">
-        <span className="text-zinc-500 text-[10px] font-mono truncate max-w-[120px]">{review.email}</span>
-        <span className="text-zinc-600 text-[10px] font-medium whitespace-nowrap">
+      <div
+        className="relative z-0 flex items-center justify-between border-t border-white/[0.04] pt-2.5"
+        style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 'auto' }}
+      >
+        <span className="font-mono truncate max-w-[140px]">{review.email}</span>
+        <span className="font-medium whitespace-nowrap ml-2">
           {review.createdAt ? formatDistanceToNow(new Date(review.createdAt), { addSuffix: true }) : 'Recently'}
         </span>
       </div>
@@ -1812,65 +1904,51 @@ const ReviewSkeleton = () => (
 
 const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: 'left' | 'right' }) => {
   const trackRef = useRef<HTMLDivElement>(null);
-  const offsetRef = useRef(0);
-  const hoveredRef = useRef(false);
-  const setWidthRef = useRef(0);
+  const posRef = useRef(0);
+  const singleWidthRef = useRef(0);
   const displayItems = [...items, ...items, ...items, ...items];
 
-  const SPEED = direction === 'left' ? 0.15 : 0.1;
+  const SPEED = direction === 'left' ? 0.5 : 0.5;
 
   useEffect(() => {
     const el = trackRef.current;
     if (!el || items.length === 0) return;
 
-    let animationId: number;
-    let lastTime = performance.now();
+    singleWidthRef.current = el.scrollWidth / 4;
+    const singleWidth = singleWidthRef.current;
 
-    const scroll = (time: number) => {
-      const delta = time - lastTime;
-      lastTime = time;
+    let pos = direction === 'right' ? -singleWidth : 0;
+    let raf: number;
 
-      if (!hoveredRef.current) {
-        if (setWidthRef.current === 0) {
-          setWidthRef.current = el.scrollWidth / 4;
-          if (direction === 'right') {
-            offsetRef.current = -setWidthRef.current;
-          }
-        }
-
-        let offset = offsetRef.current;
-        const step = delta * SPEED;
-        const setW = setWidthRef.current;
-
-        if (direction === 'right') {
-          offset += step;
-          if (offset >= setW) offset -= setW;
-        } else {
-          offset -= step;
-          if (offset <= -setW) offset += setW;
-        }
-
-        offsetRef.current = offset;
-        el.style.transform = `translateX(${offset}px)`;
+    const tick = () => {
+      if (direction === 'left') {
+        pos -= SPEED;
+        if (Math.abs(pos) >= singleWidth) pos = 0;
+      } else {
+        pos += SPEED;
+        if (pos >= 0) pos = -singleWidth;
       }
-
-      animationId = requestAnimationFrame(scroll);
+      el.style.transform = `translateX(${pos}px)`;
+      raf = requestAnimationFrame(tick);
     };
-    animationId = requestAnimationFrame(scroll);
-    return () => cancelAnimationFrame(animationId);
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [direction, items.length]);
 
   if (items.length === 0) return null;
 
   return (
     <div
-      className="overflow-hidden w-full select-none"
-      onMouseEnter={() => { hoveredRef.current = true; }}
-      onMouseLeave={() => { hoveredRef.current = false; }}
+      className="overflow-hidden w-full"
+      style={{
+        maskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)',
+      }}
     >
       <div
         ref={trackRef}
-        className="flex gap-3 will-change-transform"
+        className="flex items-start gap-3 will-change-transform"
         style={{ width: 'max-content' }}
       >
         {displayItems.map((review, idx) => (
@@ -1905,7 +1983,7 @@ const ReviewsSection = () => {
   const shuffled = [...reviews].sort(() => Math.random() - 0.5);
 
   return (
-    <section id="reviews" className="bg-black relative border-y border-white/5">
+    <section id="reviews" className="bg-black relative overflow-hidden border-y border-white/5">
       <div className="py-16 px-4 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1928,14 +2006,12 @@ const ReviewsSection = () => {
           {[1, 2, 3, 4, 5].map(i => <ReviewSkeleton key={i} />)}
         </div>
       ) : reviews.length > 0 ? (
-        <div className="relative" style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)', overflow: 'hidden', padding: 0 }}>
-          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none" />
-          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none" />
-          <div className="w-full overflow-hidden">
-            <MarqueeRow items={reviews} direction="right" />
+        <div className="w-full overflow-hidden relative">
+          <div className="mb-3 overflow-hidden w-full">
+            <MarqueeRow items={reviews} direction="left" />
           </div>
-          <div className="w-full overflow-hidden">
-            <MarqueeRow items={shuffled} direction="left" />
+          <div className="overflow-hidden w-full">
+            <MarqueeRow items={shuffled} direction="right" />
           </div>
         </div>
       ) : (
@@ -1951,17 +2027,6 @@ const ReviewsSection = () => {
 };
 
 export default function Landing({ dbProducts }: { dbProducts?: any[] }) {
-  useEffect(() => {
-    const lenis = new Lenis();
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-    requestAnimationFrame(raf);
-    return () => lenis.destroy();
-  }, []);
-
-
   return (
     <div className="min-h-screen bg-black text-zinc-100 font-sans selection:bg-brand-primary/30 selection:text-white">
       <Navbar />

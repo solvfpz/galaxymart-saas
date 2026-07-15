@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+html {
+  scroll-behavior: smooth;
+}
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -77,8 +81,12 @@
   * {
     @apply border-border;
   }
+  html {
+    overflow-x: hidden;
+  }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background text-foreground antialiased overflow-x-hidden;
+    min-height: 100vh;
   }
 }
 
