@@ -215,8 +215,8 @@ export default function WalletDashboardPage() {
                     : isReceive ? 'Received' : 'Payment';
                   return (
                     <div key={tx.tx_hash || i} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-secondary/50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className={`p-1.5 rounded-full ${isReceive ? 'bg-emerald-500/10' : 'bg-yellow-500/10'}`}>
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <div className={`p-1.5 rounded-full shrink-0 ${isReceive ? 'bg-emerald-500/10' : 'bg-yellow-500/10'}`}>
                           {isReceive
                             ? <ArrowDownLeft className={`w-3.5 h-3.5 text-emerald-400`} />
                             : <Clock className={`w-3.5 h-3.5 text-yellow-400`} />
@@ -231,17 +231,17 @@ export default function WalletDashboardPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <p className={`text-sm font-semibold ${isReceive ? 'text-emerald-400' : 'text-yellow-400'}`}>
-                          {isReceive ? '+' : ''}{tx.amount_ltc?.toFixed(8)} LTC
+                      <div className="text-right shrink-0 ml-2 sm:ml-4">
+                        <p className={`text-xs sm:text-sm font-semibold ${isReceive ? 'text-emerald-400' : 'text-yellow-400'}`}>
+                          {isReceive ? '+' : ''}{tx.amount_ltc?.toFixed(4)} LTC
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground">
                           ~${(tx.amount_usd || 0).toFixed(2)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 ml-3 shrink-0">
+                      <div className="hidden sm:flex items-center gap-2 ml-3 shrink-0">
                         {tx.confirmed_at && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">
                             {new Date(tx.confirmed_at).toLocaleDateString()}
                           </span>
                         )}

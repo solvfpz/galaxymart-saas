@@ -120,11 +120,11 @@ export default function CouponsPage() {
               <table className="w-full text-left text-sm text-muted-foreground">
                 <thead className="bg-muted text-xs uppercase text-muted-foreground">
                   <tr>
-                    <th className="px-6 py-3">Code</th>
-                    <th className="px-6 py-3">Discount</th>
-                    <th className="px-6 py-3">Status</th>
-                    <th className="px-6 py-3">Expiry Date</th>
-                    <th className="px-6 py-3 text-right">Actions</th>
+                    <th className="px-3 sm:px-6 py-3">Code</th>
+                    <th className="px-3 sm:px-6 py-3">Discount</th>
+                    <th className="px-3 sm:px-6 py-3">Status</th>
+                    <th className="px-3 sm:px-6 py-3 hidden sm:table-cell">Expiry Date</th>
+                    <th className="px-3 sm:px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -132,17 +132,17 @@ export default function CouponsPage() {
                     const isExpired = new Date(c.expiryDate) < new Date();
                     return (
                       <tr key={c._id} className="border-b border-border bg-card hover:bg-muted/50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-foreground">
+                        <td className="px-3 sm:px-6 py-4 font-medium text-foreground">
                           <span className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 font-mono text-xs">
                             {c.code}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           <span className="flex items-center gap-1 text-emerald-500 font-semibold">
                             {c.discount} <Percent className="h-3 w-3" />
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                           {isExpired ? (
                             <span className="text-destructive font-medium">Expired</span>
                           ) : c.active ? (
@@ -151,10 +151,10 @@ export default function CouponsPage() {
                             <span className="text-muted-foreground font-medium">Disabled</span>
                           )}
                         </td>
-                        <td className="px-6 py-4">{new Date(c.expiryDate).toLocaleDateString()}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button onClick={() => handleDelete(c._id)} className="p-2 text-destructive/70 hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
+                        <td className="px-3 sm:px-6 py-4 hidden sm:table-cell whitespace-nowrap">{new Date(c.expiryDate).toLocaleDateString()}</td>
+                        <td className="px-3 sm:px-6 py-4 text-right">
+                          <button onClick={() => handleDelete(c._id)} className="p-1.5 sm:p-2 text-destructive/70 hover:text-destructive">
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
                         </td>
                       </tr>

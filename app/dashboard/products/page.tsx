@@ -292,47 +292,47 @@ export default function ProductsPage() {
               <table className="w-full text-left text-sm text-muted-foreground">
                 <thead className="bg-muted text-xs uppercase text-muted-foreground tracking-wider font-semibold">
                   <tr>
-                    <th className="px-6 py-4">Product</th>
-                    <th className="px-6 py-4">Price</th>
-                    <th className="px-6 py-4">Stock</th>
-                    <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4">Visibility</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-3 sm:px-6 py-4">Product</th>
+                    <th className="px-3 sm:px-6 py-4">Price</th>
+                    <th className="px-3 sm:px-6 py-4">Stock</th>
+                    <th className="px-3 sm:px-6 py-4 hidden sm:table-cell">Type</th>
+                    <th className="px-3 sm:px-6 py-4 hidden md:table-cell">Visibility</th>
+                    <th className="px-3 sm:px-6 py-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {products.map((p) => (
                     <tr key={p._id} className="bg-card hover:bg-muted/50 transition-colors group">
-                      <td className="px-6 py-4 font-medium text-foreground">
+                      <td className="px-3 sm:px-6 py-4 font-medium text-foreground">
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
+                          <div className="h-8 w-8 sm:h-10 sm:w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
                             {p.image ? (
                               <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
                             ) : (
-                              <Package className="h-6 w-6 m-2 text-muted-foreground" />
+                              <Package className="h-4 w-4 sm:h-6 sm:w-6 m-2 text-muted-foreground" />
                             )}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{p.name}</span>
-                            <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-widest">{p.duration}</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-sm sm:text-base truncate">{p.name}</span>
+                            <span className="text-[10px] uppercase font-bold text-muted-foreground/60 tracking-widest truncate">{p.duration}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono font-medium">
+                      <td className="px-3 sm:px-6 py-4 font-mono font-medium text-sm sm:text-base whitespace-nowrap">
                         {CURRENCIES.find(c => c.code === (p.currency || 'USD'))?.symbol}{p.price.toFixed(2)}
                       </td>
-                       <td className="px-6 py-4">
-                         <span className={`px-2 py-1 rounded-md text-xs font-bold font-mono ${p.stock > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-destructive/10 text-destructive'}`}>
-                           {p.stock} available
+                       <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
+                         <span className={`px-1.5 sm:px-2 py-1 rounded-md text-[10px] sm:text-xs font-bold font-mono ${p.stock > 0 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-destructive/10 text-destructive'}`}>
+                           {p.stock}
                          </span>
                        </td>
-                      <td className="px-6 py-4">
-                        <span className="bg-blue-500/10 text-blue-500 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest">
+                      <td className="px-3 sm:px-6 py-4 hidden sm:table-cell">
+                        <span className="bg-blue-500/10 text-blue-500 px-1.5 sm:px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
                           {p.deliverableType || 'Serials'}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                      <td className="px-3 sm:px-6 py-4 hidden md:table-cell">
+                        <span className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest border whitespace-nowrap ${
                           p.visibility === 'Public' ? 'bg-emerald-500/5 text-emerald-500 border-emerald-500/20' : 
                           p.visibility === 'Onhold' ? 'bg-yellow-500/5 text-yellow-500 border-yellow-500/20' :
                           'bg-zinc-500/5 text-zinc-500 border-zinc-500/20'
@@ -341,13 +341,13 @@ export default function ProductsPage() {
                           {p.visibility || 'Public'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3 sm:px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => openForm(p)} className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
-                            <Pencil className="h-4 w-4" />
+                          <button onClick={() => openForm(p)} className="p-1.5 sm:p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors">
+                            <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
-                          <button onClick={() => handleDelete(p._id)} className="p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors">
-                            <Trash2 className="h-4 w-4" />
+                          <button onClick={() => handleDelete(p._id)} className="p-1.5 sm:p-2 text-destructive/70 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors">
+                            <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           </button>
                         </div>
                       </td>

@@ -1,50 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Shield, Zap, Lock } from 'lucide-react';
+import React from 'react';
+import { motion } from 'framer-motion';
+import { Shield, Zap, Lock } from 'lucide-react';
 import DarkVeil from './DarkVeil';
-
-const CYCLE_WORDS = ["QUALITY", "RELIABILITY", "EXCELLENCE", "PERFORMANCE", "SUPERIORITY"];
-
-const CyclingWord = () => {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % CYCLE_WORDS.length);
-    }, 2500);
-    return () => clearInterval(interval);
-  }, []);
-
-  const word = CYCLE_WORDS[index];
-  const isLong = word.length >= 11;
-  
-  return (
-    <span 
-      className="inline-flex items-center origin-left whitespace-nowrap transition-all duration-500"
-      style={{ 
-        transform: isLong ? "scale(0.9)" : "scale(1)",
-        letterSpacing: isLong ? "-0.06em" : "-0.05em"
-      }}
-    >
-      <AnimatePresence mode="wait">
-        <motion.span
-          key={word}
-          initial={{ opacity: 0, filter: "blur(8px)", y: 8 }}
-          animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
-          exit={{ opacity: 0, filter: "blur(8px)", y: -8 }}
-          transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-          className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-500 to-cyan-400 font-black inline-block"
-        >
-          {word}.
-        </motion.span>
-      </AnimatePresence>
-    </span>
-  );
-};
 
 export const Hero = () => {
   return (
-    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center bg-[#020202]">
+    <section className="relative w-full min-h-screen overflow-hidden flex flex-col items-center bg-[#020202] pt-20 pb-[60px] sm:pb-[80px]">
       {/* DarkVeil Background Container */}
       <div className="absolute inset-0 w-full h-full z-0 pointer-events-none min-h-[500px]">
         <DarkVeil
@@ -61,8 +22,8 @@ export const Hero = () => {
       </div>
 
       {/* All existing hero content stays here with zIndex 1 */}
-      <div className="relative z-[1] w-full flex flex-col items-center">
-        <div className="relative z-10 max-w-[1400px] mx-auto px-4 w-full flex flex-col items-start justify-center min-h-screen pt-20 text-left">
+      <div className="relative z-[1] w-full flex-1 flex flex-col items-center">
+        <div className="relative z-10 max-w-[1400px] mx-auto px-4 w-full flex flex-col items-center justify-center flex-1 text-center">
           <motion.div
             initial="hidden"
             animate="visible"
@@ -76,70 +37,86 @@ export const Hero = () => {
                 }
               }
             }}
-            className="max-w-4xl"
+            className="max-w-4xl -mt-[40px] md:-mt-[80px]"
           >
-            <motion.h1 
+            <motion.h1
               variants={{
                 hidden: { opacity: 0, y: 30 },
                 visible: { opacity: 1, y: 0 }
               }}
-              className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.1] mb-4 tracking-tighter text-white uppercase whitespace-nowrap"
+              className="hero-headline text-[38px] sm:text-[48px] lg:text-[66px] font-bold text-white leading-[1.1] max-w-[750px]"
+              style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.5px' }}
             >
-              UNBEATABLE <CyclingWord /> <br />
-              BEYOND BOUNDARIES.
+              {/* Line 1 — LEFT aligned with whole sentence */}
+              <span
+                style={{
+                  display: 'block',
+                  textAlign: 'center',
+                  marginLeft: '-130px',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                Quality That Never{' '} <span className="text-[#00AAFF]">Compromises.</span>
+              </span>
+
+              {/* Line 2 — CENTER aligned independently */}
+              <span
+                style={{
+                  display: 'block',
+                  textAlign: 'center',
+                  marginLeft: '0px'
+                }}
+              >
+                <span className="text-[#00AAFF]">Always</span> Instant.
+              </span>
             </motion.h1>
 
-            {/* Refined Premium Label */}
-            <motion.div 
+            <motion.p
               variants={{
-                hidden: { opacity: 0, x: -10 },
-                visible: { opacity: 1, x: 0 }
-              }}
-              className="flex items-center gap-3 mb-8"
-            >
-              <div className="h-[1px] w-8 bg-blue-500/50"></div>
-              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.3em]">Premium Digital Services</span>
-            </motion.div>
-
-            <motion.p 
-              variants={{
-                hidden: { opacity: 0, y: 20 },
+                hidden: { opacity: 0, y: 10 },
                 visible: { opacity: 1, y: 0 }
               }}
-              className="max-w-[560px] leading-[1.7]"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontSize: '16px',
-                fontWeight: 400,
-                color: 'rgba(255,255,255,0.75)',
-                letterSpacing: '0.2px',
-              }}
+              className="hero-subline text-[#00AAFF] text-[11px] font-medium text-center tracking-[3px] mt-[16px]"
+              style={{ fontFamily: "'Inter', sans-serif" }}
             >
-              Welcome to <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 font-semibold" style={{ color: 'white' }}>Galaxy Mart</span>, where <span className="text-white font-semibold">premium entertainment</span> meets unmatched reliability. We don't just provide accounts; we deliver a seamless digital lifestyle. From high-tier streaming to exclusive gaming assets, experience the <span className="text-white font-semibold">gold standard</span> of service that sets us apart from the rest.
+              &mdash; Premium Digital Services &mdash;
             </motion.p>
-            
-            <motion.div 
+
+            <motion.p
               variants={{
                 hidden: { opacity: 0, y: 20 },
                 visible: { opacity: 1, y: 0 }
               }}
-              className="flex flex-wrap items-center justify-start gap-4 sm:gap-8"
+              className="hero-body text-[13px] sm:text-[14px] lg:text-[15px] font-normal text-center leading-[1.7] max-w-[480px] mx-auto mt-[20px]"
+              style={{ color: 'rgba(255,255,255,0.65)', fontFamily: "'Inter', sans-serif" }}
+            >
+              Premium Discord services built for speed, reliability, and instant delivery. Trusted by thousands of customers worldwide.
+            </motion.p>
+
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0 }
+              }}
+              className="hero-headline flex flex-wrap justify-center gap-[10px] mt-[32px]"
             >
               {[
-                { icon: <Shield className="w-4 h-4" />, label: "Secure Payments" },
-                { icon: <Zap className="w-4 h-4" />, label: "Instant Delivery" },
-                { icon: <Lock className="w-4 h-4" />, label: "24/7 Support" }
-              ].map((feature, i) => (
-                <motion.div 
+                { icon: <Shield size={12} />, label: "Secure Payments" },
+                { icon: <Zap size={12} />, label: "Instant Delivery" },
+                { icon: <Lock size={12} />, label: "24/7 Support" }
+              ].map((pill, i) => (
+                <div
                   key={i}
-                  whileHover={{ y: -2 }}
-                  className="flex items-center gap-2.5 group cursor-default"
+                  className="flex items-center gap-[5px] px-[14px] py-[6px] rounded-full border text-white text-[12px] font-medium"
+                  style={{
+                    borderColor: 'rgba(255,255,255,0.15)',
+                    background: 'rgba(255,255,255,0.07)',
+                    fontFamily: "'Inter', sans-serif"
+                  }}
                 >
-                  <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-blue-400 shadow-sm group-hover:border-blue-400/30 group-hover:bg-blue-400/10 transition-all duration-300">
-                    {feature.icon}
-                  </div>
-                  <span className="text-sm font-medium text-zinc-500 group-hover:text-white transition-colors">{feature.label}</span>
-                </motion.div>
+                  <span className="text-[#00AAFF] shrink-0">{pill.icon}</span>
+                  {pill.label}
+                </div>
               ))}
             </motion.div>
           </motion.div>

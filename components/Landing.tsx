@@ -66,6 +66,7 @@ import AnimatedLogo from './AnimatedLogo';
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -84,7 +85,7 @@ const Navbar = () => {
           className={`
             flex items-center justify-between h-11 rounded-xl px-5 
             border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] 
-            w-full max-w-[750px] transition-all duration-500 relative
+            w-[calc(100vw-32px)] sm:w-full sm:max-w-[750px] transition-all duration-500 relative
             pointer-events-auto
             ${isScrolled ? 'bg-zinc-900/80 backdrop-blur-3xl' : 'bg-zinc-900/40 backdrop-blur-2xl'}
           `}
@@ -140,80 +141,188 @@ const Navbar = () => {
         </motion.div>
       </motion.nav>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - Premium Glass Drawer */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 z-50 lg:hidden bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 z-50 md:hidden bg-black/70 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ x: '100%', opacity: 0, scale: 0.96 }}
+              animate={{ x: 0, opacity: 1, scale: 1 }}
+              exit={{ x: '100%', opacity: 0, scale: 0.96 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 220 }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
-              className="absolute right-0 top-0 bottom-0 w-full max-w-xs bg-zinc-950 border-l border-white/5 shadow-2xl flex flex-col"
+              className="fixed z-50 md:hidden flex flex-col overflow-hidden"
+              style={{
+                width: 'calc(100vw - 32px)',
+                maxWidth: '400px',
+                height: 'calc(100vh - 32px)',
+                top: '16px',
+                right: '16px',
+                borderRadius: '20px',
+                background: 'rgba(12,12,16,0.92)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                boxShadow: '0 25px 60px -12px rgba(0,0,0,0.8), 0 0 0 1px rgba(59,130,246,0.06)',
+              }}
             >
-              <div className="flex justify-between items-center p-6 border-b border-white/5">
-                <div className="flex items-center gap-2.5">
-                  <AnimatedLogo className="h-10 w-10" />
-                  <span className="font-bold text-lg text-white">GALAXY BOOSTS</span>
+              {/* Radial glow behind logo */}
+              <div className="absolute -top-24 -right-24 w-72 h-72 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+
+              {/* Header */}
+              <div className="relative flex items-center justify-between p-5 pb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <AnimatedLogo className="h-11 w-11" />
+                  <div>
+                    <span className="font-bold text-base text-white tracking-tight block leading-tight">Galaxy Boosts</span>
+                    <span className="text-[10px] text-zinc-500 font-medium tracking-wide">Premium Digital Services</span>
+                  </div>
                 </div>
-                <button 
-                  className="p-2 rounded-xl bg-zinc-900 border border-white/5 text-zinc-400 hover:text-white transition-colors"
+                <button
                   onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-9 h-9 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center text-zinc-500 hover:text-white hover:bg-white/[0.08] hover:border-white/[0.12] transition-all duration-200 active:scale-90 shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X size={16} />
                 </button>
               </div>
-              
-              <div className="flex-1 overflow-y-auto py-8 px-6">
-                <div className="flex flex-col space-y-2">
-                  {[
-                    { name: 'Home', icon: <Home className="w-5 h-5" />, href: '/' },
-                    { name: 'Features', icon: <Zap className="w-5 h-5" />, href: '#features' },
-                    { name: 'Products', icon: <ShoppingBag className="w-5 h-5" />, href: '#products' },
-                    { name: 'Reviews', icon: <Star className="w-5 h-5" />, href: '#reviews' },
-                    { name: 'FAQ', icon: <MessageCircle className="w-5 h-5" />, href: '#faq' },
-                    { name: 'TOS', icon: <FileText className="w-5 h-5" />, href: '#tos' }
-                  ].map((item, i) => (
-                    <motion.a 
+
+              {/* Divider */}
+              <div className="relative mx-5 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent shrink-0" />
+
+              {/* Menu Items */}
+              <div className="flex-1 overflow-y-auto py-3 px-4 space-y-0.5 scrollbar-none">
+                {[
+                  { name: 'Home', icon: Home, href: '/' },
+                  { name: 'Features', icon: Zap, href: '#features' },
+                  { name: 'Products', icon: ShoppingBag, href: '#products' },
+                  { name: 'Reviews', icon: Star, href: '#reviews' },
+                  { name: 'FAQ', icon: MessageCircle, href: '#faq' },
+                  { name: 'TOS', icon: FileText, href: '#tos' },
+                ].map((item, i) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+
+                  return (
+                    <motion.a
                       key={item.name}
-                      initial={{ opacity: 0, x: 20 }}
+                      initial={{ opacity: 0, x: 24 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="flex items-center gap-4 py-4 px-4 rounded-xl hover:bg-white/5 text-lg font-medium text-zinc-400 hover:text-white transition-all duration-200 group" 
+                      exit={{ opacity: 0, x: 24 }}
+                      transition={{ delay: i * 0.06, duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
+                      whileTap={{ scale: 0.97 }}
+                      className={`relative flex items-center gap-3.5 h-[54px] px-3.5 rounded-[14px] text-sm font-medium transition-all duration-200 group overflow-hidden ${
+                        isActive
+                          ? 'text-white'
+                          : 'text-zinc-400 hover:text-white'
+                      }`}
                     >
-                      <div className="text-zinc-500 group-hover:text-blue-500 transition-colors">
-                        {item.icon}
+                      {/* Hover/Active background glow */}
+                      <div className={`absolute inset-0 rounded-[14px] transition-all duration-300 ${
+                        isActive
+                          ? 'bg-blue-500/10 border border-blue-500/20'
+                          : 'opacity-0 group-hover:opacity-100 bg-gradient-to-r from-blue-500/5 to-transparent'
+                      }`} />
+
+                      {/* Left active indicator */}
+                      <div className={`absolute left-0 top-3 bottom-3 w-[2.5px] rounded-full transition-all duration-300 ${
+                        isActive
+                          ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]'
+                          : 'bg-transparent group-hover:bg-blue-500/50'
+                      }`} />
+
+                      {/* Icon container */}
+                      <div className={`relative z-10 w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-300 ${
+                        isActive
+                          ? 'bg-blue-500/15 border border-blue-500/25 text-blue-400 scale-110'
+                          : 'bg-white/[0.03] border border-white/[0.04] text-zinc-400 group-hover:bg-blue-500/10 group-hover:border-blue-500/20 group-hover:scale-110 group-hover:text-blue-400'
+                      }`}>
+                        <Icon size={18} />
                       </div>
-                      <span className="flex-1">{item.name}</span>
-                      <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transform -translate-x-2 group-hover:translate-x-0 transition-all" />
+
+                      {/* Label */}
+                      <span className={`relative z-10 flex-1 tracking-tight ${
+                        isActive ? 'font-bold' : 'font-medium'
+                      }`}>
+                        {item.name}
+                      </span>
+
+                      {/* Arrow */}
+                      <ArrowRight className={`relative z-10 w-3.5 h-3.5 transition-all duration-300 ${
+                        isActive
+                          ? 'opacity-100 translate-x-0 text-blue-400'
+                          : 'opacity-0 -translate-x-2 text-blue-400 group-hover:opacity-100 group-hover:translate-x-0'
+                      }`} />
                     </motion.a>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              <div className="p-6 border-t border-white/5 bg-zinc-900/50 backdrop-blur-sm">
-                <div className="flex flex-col gap-3">
-                  <a className="w-full py-3.5 flex items-center justify-center gap-2 font-medium bg-blue-600 text-white rounded-xl transition-all duration-200 shadow-lg shadow-blue-600/20" href="https://discord.gg/WpbDuTcAQH">
-                    <MessageCircle className="w-4 h-4" />
-                    <span>Join Discord</span>
-                  </a>
-                  <a className="w-full py-3.5 flex items-center justify-center gap-2 font-medium bg-sky-500 text-white rounded-xl transition-all duration-200 shadow-lg shadow-sky-500/20" href="https://t.me/boosts">
-                    <Send className="w-4 h-4" />
-                    <span>Join Telegram</span>
-                  </a>
+              {/* Bottom Section */}
+              <div className="relative px-4 pb-5 shrink-0">
+                {/* Thin divider */}
+                <div className="relative mx-1 mb-4 h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
+
+                <div className="space-y-2.5">
+                  {/* Discord Card */}
+                  <motion.a
+                    href="https://discord.gg/WpbDuTcAQH"
+                    whileTap={{ scale: 0.97 }}
+                    className="relative flex items-center gap-3.5 p-3.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] overflow-hidden group cursor-pointer transition-all duration-300 hover:border-blue-500/20 hover:shadow-[0_0_20px_rgba(59,130,246,0.06)]"
+                  >
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[14px]" />
+
+                    <div className="w-9 h-9 rounded-[10px] bg-[#5865F2]/10 border border-[#5865F2]/20 flex items-center justify-center shrink-0 relative z-10">
+                      <MessageCircle size={18} className="text-[#5865F2]" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 relative z-10">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-white">Join Discord</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 font-medium">24,000+ Members</p>
+                    </div>
+
+                    <ArrowRight size={16} className="text-zinc-600 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-300 relative z-10 shrink-0" />
+                  </motion.a>
+
+                  {/* Telegram Card */}
+                  <motion.a
+                    href="https://t.me/boosts"
+                    whileTap={{ scale: 0.97 }}
+                    className="relative flex items-center gap-3.5 p-3.5 rounded-[14px] border border-white/[0.06] bg-white/[0.02] overflow-hidden group cursor-pointer transition-all duration-300 hover:border-sky-500/20 hover:shadow-[0_0_20px_rgba(14,165,233,0.06)]"
+                  >
+                    {/* Hover glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-sky-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[14px]" />
+
+                    <div className="w-9 h-9 rounded-[10px] bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 relative z-10">
+                      <Send size={18} className="text-sky-400" />
+                    </div>
+
+                    <div className="flex-1 min-w-0 relative z-10">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-white">Telegram</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-500 font-medium">Live Updates & Support</p>
+                    </div>
+
+                    <ArrowRight size={16} className="text-zinc-600 group-hover:text-sky-400 group-hover:translate-x-0.5 transition-all duration-300 relative z-10 shrink-0" />
+                  </motion.a>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>
@@ -269,7 +378,7 @@ const Features = () => {
               <span className="uppercase text-xs font-normal text-zinc-500 tracking-[0.2em]">Galaxyboosts</span>
             </div>
 
-            <h2 className="font-display text-4xl sm:text-5xl font-bold text-white tracking-tight mb-4 relative z-10 leading-tight">
+            <h2 className="font-display text-3xl sm:text-5xl font-bold text-white tracking-tight mb-4 relative z-10 leading-tight">
               Why choose<br />
               <span className="bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">GalaxyBoosts?</span>
             </h2>
@@ -561,18 +670,21 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
   };
 
   const checkStatus = async () => {
-    if (isFinalizedRef.current) {
-      return;
-    }
+    if (isFinalizedRef.current) return;
 
     try {
-      const res = await fetch(`/api/payments/verify?paymentId=${data.paymentId}`);
+      const orderIdentifier = data.orderId || data.paymentId;
+      if (!orderIdentifier) return;
+
+      const res = await fetch(`/api/orders/${orderIdentifier}/status`);
       const result = await res.json();
+      if (!result.success) return;
+
       if (result.orderId) setOrderId(result.orderId);
-      if (result.productId) setProductId(result.productId);
+      if (result.productName) setProductId(result.productName);
       if (result.customerEmail) setCustomerEmail(result.customerEmail);
 
-      if (['paid', 'manual', 'confirmed', 'delivered'].includes(result.status)) {
+      if (result.isFinal || ['paid', 'manual', 'confirmed', 'delivered'].includes(result.status)) {
         console.log('InvoiceView: Payment finalized, stopping poll');
         isFinalizedRef.current = true;
         if (pollIntervalRef.current) {
@@ -584,9 +696,9 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
           setDeliveredItems(result.deliveredItems);
         }
         if (result.instructions) setInstructions(result.instructions);
-      } else if (result.status === 'detected' || result.status === 'confirming') {
+      } else if (result.status === 'detected' || result.status === 'confirming' || result.status === 'waiting') {
         setStatus('detected');
-      } else if (result.status === 'expired' || result.status === 'failed') {
+      } else if (result.isTerminal || result.status === 'expired' || result.status === 'failed') {
         setStatus('expired');
         isFinalizedRef.current = true;
         if (pollIntervalRef.current) {
@@ -601,13 +713,13 @@ const InvoiceView = ({ data, onBack, onComplete }: { data: any, onBack: () => vo
 
   useEffect(() => {
     checkStatus();
-    pollIntervalRef.current = setInterval(checkStatus, 5000);
+    pollIntervalRef.current = setInterval(checkStatus, 10000);
     return () => {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
     };
-  }, [data.paymentId]);
+  }, [data.orderId, data.paymentId]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -1223,16 +1335,16 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
             onComplete={() => setIsSuccess(true)}
           />
         ) : (
-          <section className="grid gap-5 max-w-[1080px] mx-auto w-full" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
+          <section className="grid gap-5 max-w-[1080px] mx-auto w-full lg:grid-cols-[1.4fr_1fr]">
             {/* Left: Product Info */}
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl overflow-hidden flex flex-col w-full" style={{ backdropFilter: 'blur(10px)' }}>
-              <div className="p-7 flex flex-col flex-1">
+              <div className="p-4 sm:p-7 flex flex-col flex-1">
                 {/* Product Header */}
                 <div className="mb-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <h1 className="font-display text-[24px] font-bold tracking-tight text-white">{product.name}</h1>
-                    <div className="flex items-baseline gap-2 shrink-0 ml-4">
-                      <span className="text-[22px] font-bold text-white">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-2 gap-1 sm:gap-0">
+                    <h1 className="font-display text-[20px] sm:text-[24px] font-bold tracking-tight text-white">{product.name}</h1>
+                    <div className="flex items-baseline gap-2 shrink-0">
+                      <span className="text-[18px] sm:text-[22px] font-bold text-white">
                         {typeof product.price === 'number' ? `${currencySymbol}${product.price.toFixed(2)}` : product.price}
                       </span>
                       <span className="text-[10px] text-zinc-500 uppercase tracking-wider">incl. taxes</span>
@@ -1276,7 +1388,7 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
                 {/* Trust Row */}
                 <div className="mt-auto pt-5">
                   <div className="pt-5 border-t border-white/[0.06]">
-                    <div className="flex items-center justify-center gap-8 text-[12px] text-white/35">
+                    <div className="flex items-center justify-center gap-4 sm:gap-8 text-[11px] sm:text-[12px] text-white/35 flex-wrap">
                       <div className="flex items-center gap-2">
                         <Lock className="w-4 h-4" />
                         <span>Secure</span>
@@ -1297,7 +1409,7 @@ export const ProductDetailPage = ({ dbProducts }: { dbProducts?: any[] }) => {
 
             {/* Right: Checkout Panel */}
             <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] backdrop-blur-xl overflow-hidden flex flex-col w-full" style={{ backdropFilter: 'blur(10px)' }}>
-              <div className="p-6 flex flex-col flex-1 justify-between h-full">
+              <div className="p-4 sm:p-6 flex flex-col flex-1 justify-between h-full">
                 {/* Order Summary Header */}
                 <div className="flex items-center justify-between mb-5 pb-4 border-b border-white/[0.06]">
                   <h2 className="text-[11px] font-bold text-white/40 uppercase tracking-[0.12em]">Order Summary</h2>
@@ -1568,10 +1680,10 @@ const Footer = () => {
       </div>
 
       <div className="max-w-[1200px] mx-auto px-8 sm:px-12 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-12 mb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-4         gap-8 sm:gap-12 mb-16 sm:mb-24">
           <div className="lg:col-span-1">
             <Magnetic>
-              <a className="flex items-center gap-3 text-3xl font-bold text-white tracking-tighter mb-6" href="/">
+              <a className="flex items-center gap-3 text-2xl sm:text-3xl font-bold text-white tracking-tighter mb-6" href="/">
                 <AnimatedLogo className="h-10 w-10" />
                 GalaxyBoosts
               </a>
@@ -1581,7 +1693,7 @@ const Footer = () => {
             </p>
           </div>
 
-          <div className="lg:col-span-3 flex gap-12 lg:justify-end">
+          <div className="lg:col-span-3 flex flex-col sm:flex-row gap-8 sm:gap-12 lg:justify-end">
             {sections.map((s, i) => (
             <motion.div 
               key={i}
@@ -1705,6 +1817,8 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
   const setWidthRef = useRef(0);
   const displayItems = [...items, ...items, ...items, ...items];
 
+  const SPEED = direction === 'left' ? 0.15 : 0.1;
+
   useEffect(() => {
     const el = trackRef.current;
     if (!el || items.length === 0) return;
@@ -1719,10 +1833,13 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
       if (!hoveredRef.current) {
         if (setWidthRef.current === 0) {
           setWidthRef.current = el.scrollWidth / 4;
+          if (direction === 'right') {
+            offsetRef.current = -setWidthRef.current;
+          }
         }
 
         let offset = offsetRef.current;
-        const step = delta * 0.04;
+        const step = delta * SPEED;
         const setW = setWidthRef.current;
 
         if (direction === 'right') {
@@ -1753,7 +1870,7 @@ const MarqueeRow = ({ items, direction = 'left' }: { items: any[]; direction?: '
     >
       <div
         ref={trackRef}
-        className="flex gap-5 will-change-transform"
+        className="flex gap-3 will-change-transform"
         style={{ width: 'max-content' }}
       >
         {displayItems.map((review, idx) => (
@@ -1788,8 +1905,8 @@ const ReviewsSection = () => {
   const shuffled = [...reviews].sort(() => Math.random() - 0.5);
 
   return (
-    <section id="reviews" className="py-16 bg-black relative overflow-hidden w-full border-y border-white/5">
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-8">
+    <section id="reviews" className="bg-black relative border-y border-white/5">
+      <div className="py-16 px-4 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1806,36 +1923,29 @@ const ReviewsSection = () => {
         </motion.div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        className="w-full relative"
-      >
-        {loading ? (
-          <div className="flex gap-3 overflow-hidden py-2 px-4 sm:px-8">
-            {[1, 2, 3, 4, 5].map(i => <ReviewSkeleton key={i} />)}
+      {loading ? (
+        <div className="flex gap-3 overflow-hidden py-2 px-4 sm:px-8">
+          {[1, 2, 3, 4, 5].map(i => <ReviewSkeleton key={i} />)}
+        </div>
+      ) : reviews.length > 0 ? (
+        <div className="relative" style={{ width: '100vw', marginLeft: 'calc(-50vw + 50%)', overflow: 'hidden', padding: 0 }}>
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none" />
+          <div className="w-full overflow-hidden">
+            <MarqueeRow items={reviews} direction="right" />
           </div>
-        ) : reviews.length > 0 ? (
-          <>
-            <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
-            <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10 pointer-events-none hidden sm:block" />
-            <div className="space-y-6">
-              <MarqueeRow items={reviews} direction="right" />
-              <div className="opacity-[0.95]">
-                <MarqueeRow items={shuffled} direction="left" />
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="py-8 text-center">
-            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 border border-white/10">
-              <Star className="w-5 h-5 text-zinc-600" />
-            </div>
-            <p className="text-zinc-500 font-medium tracking-tight text-sm">No reviews yet. Be the first to leave one!</p>
+          <div className="w-full overflow-hidden">
+            <MarqueeRow items={shuffled} direction="left" />
           </div>
-        )}
-      </motion.div>
+        </div>
+      ) : (
+        <div className="py-8 text-center">
+          <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-3 border border-white/10">
+            <Star className="w-5 h-5 text-zinc-600" />
+          </div>
+          <p className="text-zinc-500 font-medium tracking-tight text-sm">No reviews yet. Be the first to leave one!</p>
+        </div>
+      )}
     </section>
   );
 };
@@ -1863,9 +1973,9 @@ export default function Landing({ dbProducts }: { dbProducts?: any[] }) {
 
       {/* FAQ Section */}
       <section id="faq" className="py-20 bg-black relative overflow-hidden w-full">
-        <div className="max-w-[1200px] mx-auto px-8 relative">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-8 relative">
           <div className="text-center mb-12">
-            <h2 className="font-display text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 tracking-tight">
               Frequently Asked Questions
             </h2>
             <div className="h-1 w-16 bg-blue-600 rounded-full mx-auto mb-4"></div>

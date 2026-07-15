@@ -432,8 +432,8 @@ export default function FeedbackPage() {
             <p className="text-xs">Try adjusting your search or filters.</p>
           </div>
         ) : (
-          <div className="w-full">
-            <table className="w-full text-sm">
+          <div className="w-full overflow-x-auto">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-wider text-zinc-500">
                   <th className="px-4 py-3 text-left font-semibold">Customer</th>

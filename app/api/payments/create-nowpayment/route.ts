@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
 import Coupon from '@/models/Coupon';
+import Payment from '@/models/Payment';
 import crypto from 'crypto';
 import axios from 'axios';
 
@@ -251,7 +252,29 @@ export async function POST(req: Request) {
       }, { status: 500 });
     }
 
-    // ── 9. Return invoice response ────────────────────────────────────────
+    // ── 9. Create Payment model (source of truth) ─────────────────────────
+    step('Creating Payment document...');
+    try {
+      await Payment.create({
+        payment_id: paymentId,
+        order_id: order._id,
+        invoice_id: paymentId,
+        pay_address: payAddress,
+        pay_amount: payAmount,
+        pay_currency: 'ltc',
+        price_amount: finalUsdAmount,
+        price_currency: 'usd',
+        payment_status: 'pending',
+        nowpayments_payment_id: String(nowPayId),
+        created_at: new Date(),
+        last_checked_at: new Date(),
+      });
+      step('Payment document created');
+    } catch (payErr: any) {
+      errLog('Payment document creation failed (non-fatal)', payErr.message);
+    }
+
+    // ── 10. Return invoice response ───────────────────────────────────────
     const response = {
       success: true,
       orderId: String(order._id),

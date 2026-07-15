@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { CheckCircle2, Clock, Package, Mail, Calendar, DollarSign, ArrowLeft, Download, FileText, ExternalLink, Star } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Mail, Calendar, ArrowLeft, Download, FileText, ExternalLink, Star, RefreshCw } from 'lucide-react';
 import AnimatedLogo from '@/components/AnimatedLogo';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -12,7 +12,11 @@ export default function InvoicePage() {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string>('pending');
   const [loading, setLoading] = useState(true);
+  const [polling, setPolling] = useState(false);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const finalizedRef = useRef(false);
 
   // Review Form State
   const [email, setEmail] = useState('');
@@ -20,6 +24,57 @@ export default function InvoicePage() {
   const [comment, setComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+
+  const fetchStatus = async (isInitial = false) => {
+    if (finalizedRef.current && !isInitial) return;
+
+    try {
+      const res = await fetch(`/api/orders/${id}/status`);
+      const data = await res.json();
+      if (!data.success) return;
+
+      if (!isInitial) {
+        setOrder((prev: any) => {
+          if (!prev) return prev;
+          return { ...prev, ...data };
+        });
+      }
+
+      setPaymentStatus(data.status);
+
+      if (data.isFinal) {
+        finalizedRef.current = true;
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      }
+
+      if (data.customerEmail && !email) {
+        setEmail(data.customerEmail);
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Failed to fetch order status:', err);
+      return null;
+    } finally {
+      if (isInitial) setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!id) return;
+
+    fetchStatus(true).then(() => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(() => fetchStatus(false), 10000);
+    });
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [id]);
 
   useEffect(() => {
     if (order?.customerEmail) {
@@ -29,7 +84,7 @@ export default function InvoicePage() {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email.includes('@')) {
       toast.error('Please enter a valid email');
       return;
@@ -39,7 +94,7 @@ export default function InvoicePage() {
       toast.error('Comment must be at least 10 characters');
       return;
     }
-    
+
     setIsSubmittingReview(true);
     try {
       const res = await fetch('/api/reviews', {
@@ -66,23 +121,10 @@ export default function InvoicePage() {
     }
   };
 
-  useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const res = await fetch(`/api/orders/${id}`);
-        const data = await res.json();
-        if (data.success) {
-          setOrder(data.order);
-        }
-      } catch (err) {
-        console.error('Failed to fetch order:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) fetchOrder();
-  }, [id]);
+  const handleRefresh = () => {
+    fetchStatus(false);
+    toast.success('Status refreshed');
+  };
 
   if (loading) {
     return (
@@ -105,9 +147,11 @@ export default function InvoicePage() {
 
   const product = order.productId;
   const currencySymbol = product?.currency === 'EUR' ? '€' : '$';
+  const isPaid = ['confirmed', 'delivered', 'manual_paid', 'manual_delivered'].includes(paymentStatus);
+  const isExpired = ['expired', 'failed'].includes(paymentStatus);
 
   return (
-    <div className="min-h-screen bg-zinc-950 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-zinc-950 py-8 sm:py-12 px-3 sm:px-6 lg:px-8">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -121,8 +165,15 @@ export default function InvoicePage() {
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             <span className="text-sm font-medium">Storefront</span>
           </button>
-          
+
           <div className="flex items-center gap-4">
+            <button
+              onClick={handleRefresh}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/10 transition-all"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </button>
             <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/10 transition-all">
               <Download className="w-4 h-4" />
               Download PDF
@@ -172,30 +223,30 @@ export default function InvoicePage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-white/10 overflow-hidden mb-12">
-                  <table className="w-full text-sm">
+                <div className="rounded-2xl border border-white/10 overflow-hidden mb-12 overflow-x-auto">
+                  <table className="w-full text-sm min-w-[400px]">
                     <thead className="bg-white/5 text-[10px] font-bold uppercase tracking-widest text-zinc-400">
                       <tr>
-                        <th className="px-6 py-4 text-left">Description</th>
-                        <th className="px-6 py-4 text-center">Qty</th>
-                        <th className="px-6 py-4 text-right">Total</th>
+                        <th className="px-4 sm:px-6 py-4 text-left">Description</th>
+                        <th className="px-4 sm:px-6 py-4 text-center">Qty</th>
+                        <th className="px-4 sm:px-6 py-4 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       <tr className="text-white bg-white/[0.02]">
-                        <td className="px-6 py-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-lg bg-zinc-800 flex items-center justify-center">
-                              <Package className="w-5 h-5 text-brand-primary" />
+                        <td className="px-4 sm:px-6 py-4 sm:py-6">
+                          <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
+                              <Package className="w-4 h-4 sm:w-5 sm:h-5 text-brand-primary" />
                             </div>
-                            <div>
-                              <div className="font-bold">{product?.name || 'Store Item'}</div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-sm sm:text-base truncate">{product?.name || 'Store Item'}</div>
                               <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">{product?.duration || 'Lifetime'} Access</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-6 text-center font-mono">1</td>
-                        <td className="px-6 py-6 text-right font-mono font-bold text-brand-primary">
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-center font-mono">1</td>
+                        <td className="px-4 sm:px-6 py-4 sm:py-6 text-right font-mono font-bold text-brand-primary whitespace-nowrap">
                           {currencySymbol}{order.amount.toFixed(2)}
                         </td>
                       </tr>
@@ -216,18 +267,18 @@ export default function InvoicePage() {
                 </div>
 
                 {/* Review Form - Only show if paid/confirmed */}
-                {order.status === 'confirmed' && !reviewSubmitted && (
+                {isPaid && !reviewSubmitted && (
                   <div className="mt-12 p-8 rounded-2xl bg-zinc-900/60 border border-white/10 relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-32 bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
-                    
+
                     <h3 className="text-xl font-bold text-white mb-2">How was your experience?</h3>
                     <p className="text-sm text-zinc-400 mb-6">Leave a review to let us know how we did. Your feedback helps us improve.</p>
-                    
+
                     <form onSubmit={handleReviewSubmit} className="space-y-6 relative z-10">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                           <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Email Address</label>
-                          <input 
+                          <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -252,10 +303,10 @@ export default function InvoicePage() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <div>
                         <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Your Feedback</label>
-                        <textarea 
+                        <textarea
                           value={comment}
                           onChange={(e) => setComment(e.target.value)}
                           placeholder="Tell us about your experience (min. 10 characters)..."
@@ -263,9 +314,9 @@ export default function InvoicePage() {
                           required
                         />
                       </div>
-                      
-                      <button 
-                        type="submit" 
+
+                      <button
+                        type="submit"
                         disabled={isSubmittingReview}
                         className="w-full sm:w-auto px-8 py-3 rounded-xl bg-brand-primary text-black font-bold text-sm tracking-wide hover:bg-brand-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-brand-primary/10"
                       >
@@ -274,8 +325,8 @@ export default function InvoicePage() {
                     </form>
                   </div>
                 )}
-                
-                {order.status === 'confirmed' && reviewSubmitted && (
+
+                {isPaid && reviewSubmitted && (
                   <div className="mt-12 p-8 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
                     <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
                     <h3 className="text-xl font-bold text-white mb-2">Thank you for your review!</h3>
@@ -292,16 +343,18 @@ export default function InvoicePage() {
               <CardContent className="p-6">
                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-4">Payment Status</label>
                 <div className={`flex items-center gap-3 p-4 rounded-2xl border ${
-                  order.status === 'confirmed' 
-                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
-                    : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                  isPaid
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                    : isExpired
+                      ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                      : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
                 }`}>
-                  {order.status === 'confirmed' ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                  {isPaid ? <CheckCircle2 className="w-5 h-5" /> : isExpired ? <Clock className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                   <span className="text-sm font-bold uppercase tracking-widest">
-                    {order.status === 'confirmed' ? 'Successfully Paid' : 'Payment Pending'}
+                    {isPaid ? 'Successfully Paid' : isExpired ? 'Payment Expired' : 'Payment Pending'}
                   </span>
                 </div>
-                
+
                 <div className="pt-6 mt-6 border-t border-white/10 space-y-4">
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-zinc-500 font-medium tracking-wide">Method</span>
@@ -311,6 +364,11 @@ export default function InvoicePage() {
                     <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Total Paid</span>
                     <span className="font-bold text-white font-mono">{currencySymbol}{order.amount.toFixed(2)}</span>
                   </div>
+                  {!isPaid && !isExpired && (
+                    <p className="text-[10px] text-zinc-600 text-center pt-2">
+                      Auto-refreshes every 10 seconds
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

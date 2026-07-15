@@ -150,17 +150,17 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {latestOrders?.length > 0 ? latestOrders.map((order: any) => (
-                <div key={order._id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-primary/10 p-2 rounded-full">
+                <div key={order._id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted transition-colors gap-3">
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                    <div className="bg-primary/10 p-2 rounded-full shrink-0">
                       <TrendingUp className="h-4 w-4 text-primary" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{order.customerEmail}</p>
-                      <p className="text-xs text-muted-foreground">Order #{order.paymentId}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{order.customerEmail}</p>
+                      <p className="text-xs text-muted-foreground truncate">Order #{order.paymentId}</p>
                     </div>
                   </div>
-                  <div className="font-medium">+${order.usdAmount?.toFixed(2)}</div>
+                  <div className="font-medium whitespace-nowrap shrink-0">+${order.usdAmount?.toFixed(2)}</div>
                 </div>
               )) : (
                 <div className="py-4 text-center text-sm text-muted-foreground">No orders found.</div>
@@ -177,15 +177,15 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {topProducts?.length > 0 ? topProducts.map((product: any) => (
-                <div key={product._id} className="flex items-center gap-4 p-2 rounded-lg hover:bg-muted transition-colors">
-                  <div className="h-10 w-10 rounded-md bg-secondary flex items-center justify-center">
-                    <Package className="h-5 w-5 text-muted-foreground" />
+                <div key={product._id} className="flex items-center gap-3 sm:gap-4 p-2 rounded-lg hover:bg-muted transition-colors">
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                    <Package className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <p className="text-sm font-medium leading-none">{product.name}</p>
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <p className="text-sm font-medium leading-none truncate">{product.name}</p>
                     <p className="text-xs text-muted-foreground">{product.salesCount} sales</p>
                   </div>
-                  <div className="font-medium">${product.totalRevenue?.toFixed(2)}</div>
+                  <div className="font-medium whitespace-nowrap shrink-0">${product.totalRevenue?.toFixed(2)}</div>
                 </div>
               )) : (
                 <div className="py-4 text-center text-sm text-muted-foreground">No data available.</div>

@@ -13,7 +13,7 @@ interface Order {
   usdAmount: number;
   ltcAmount: number;
   paymentStatus?: 'unpaid' | 'paid';
-  status: 'pending' | 'confirmed' | 'delivered' | 'expired' | 'manual';
+  status: 'pending' | 'confirmed' | 'delivered' | 'expired' | 'manual' | 'failed';
   quantity: number;
   paymentId: string;
   createdAt: string;
@@ -25,6 +25,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; border: string; 
   confirmed: { bg: 'bg-blue-500/20', text: 'text-blue-400', border: 'border-blue-500/30', glow: 'shadow-blue-500/10' },
   delivered: { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30', glow: 'shadow-green-500/10' },
   expired: { bg: 'bg-red-500/20', text: 'text-red-400', border: 'border-red-500/30', glow: 'shadow-red-500/10' },
+  failed: { bg: 'bg-red-800/20', text: 'text-red-300', border: 'border-red-800/30', glow: 'shadow-red-800/10' },
   manual: { bg: 'bg-purple-500/20', text: 'text-purple-400', border: 'border-purple-500/30', glow: 'shadow-purple-500/10' },
 };
 
@@ -91,29 +92,33 @@ export default function OrdersPage() {
     return () => document.removeEventListener('keydown', handleEsc);
   }, []);
 
-  const updateStatus = async (id: string, newStatus: string) => {
+  const updateStatus = async (id: string, newStatus: string, action?: string) => {
     setUpdatingId(id);
     const prevOrders = [...orders];
 
-    setOrders(prev => prev.map(o => o._id === id ? { ...o, status: newStatus as Order['status'] } : o));
+    if (!action) {
+      setOrders(prev => prev.map(o => o._id === id ? { ...o, status: newStatus as Order['status'] } : o));
+    }
     setOpenMenuId(null);
 
     try {
+      const body = action ? { action } : { status: newStatus };
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        toast.success(`Order marked as ${newStatus}`);
+        toast.success(action ? `${action.replace('_', ' ')} completed` : `Order marked as ${newStatus}`);
+        fetchOrders();
       } else {
         throw new Error(data.message || 'Update failed');
       }
     } catch (err) {
-      setOrders(prevOrders);
+      if (!action) setOrders(prevOrders);
       toast.error('Failed to update status');
     } finally {
       setUpdatingId(null);
@@ -200,7 +205,7 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="rounded-xl border border-white/10 bg-zinc-900/40">
-          <div className="grid grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider border-b border-white/5 rounded-t-xl bg-zinc-900/40">
+          <div className="grid grid-cols-[2.5fr_1.2fr_1fr_0.5fr] sm:grid-cols-[2.5fr_1.2fr_1fr_1.2fr_0.5fr] md:grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-3 text-xs font-medium text-zinc-500 uppercase tracking-wider border-b border-white/5 rounded-t-xl bg-zinc-900/40">
             <span>Customer</span>
             <span className="hidden md:block">Product</span>
             <span className="text-right">Amount</span>
@@ -216,15 +221,15 @@ export default function OrdersPage() {
               const isMenuOpen = openMenuId === order._id;
 
               return (
-                <div
-                  key={order._id}
-                  className={cn(
-                    'grid grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-4',
-                    'border-b border-white/5 last:border-b-0',
-                    'hover:bg-white/[0.02] transition-colors duration-150',
-                    isUpdating && 'opacity-50 pointer-events-none'
-                  )}
-                >
+                  <div
+                    key={order._id}
+                    className={cn(
+                      'grid grid-cols-[2.5fr_1.2fr_1fr_0.5fr] sm:grid-cols-[2.5fr_1.2fr_1fr_1.2fr_0.5fr] md:grid-cols-[2.5fr_2fr_1.2fr_1fr_1.2fr_0.5fr] items-center gap-x-5 px-5 py-4',
+                      'border-b border-white/5 last:border-b-0',
+                      'hover:bg-white/[0.02] transition-colors duration-150',
+                      isUpdating && 'opacity-50 pointer-events-none'
+                    )}
+                  >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
                       {getEmailInitial(order.customerEmail)}
@@ -293,13 +298,13 @@ export default function OrdersPage() {
                           className="absolute right-0 top-10 z-[70] w-52 rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-2xl py-1 overflow-hidden"
                           style={{ animation: 'dropdownIn 150ms ease-out' }}
                         >
-                          {order.status === 'pending' && (
+                          {order.status !== 'expired' && order.status !== 'manual' && (
                             <button
                               onClick={() => updateStatus(order._id, 'confirmed')}
                               className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
                             >
                               <CheckCircle className="h-3.5 w-3.5 text-green-400" />
-                              Mark as Confirmed
+                              Verify Payment
                             </button>
                           )}
 
@@ -308,28 +313,24 @@ export default function OrdersPage() {
                             className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
                           >
                             <Zap className="h-3.5 w-3.5 text-purple-400" />
-                            Mark as Manual
+                            Mark as Paid
                           </button>
 
-                          {(order.status === 'pending' || order.status === 'confirmed') && (
-                            <button
-                              onClick={() => updateStatus(order._id, 'delivered')}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
-                            >
-                              <Truck className="h-3.5 w-3.5 text-blue-400" />
-                              Mark as Delivered
-                            </button>
-                          )}
+                          <button
+                            onClick={() => updateStatus(order._id, 'delivered')}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
+                          >
+                            <Truck className="h-3.5 w-3.5 text-blue-400" />
+                            Mark as Delivered
+                          </button>
 
-                          {order.status !== 'pending' && order.status !== 'expired' && (
-                            <button
-                              onClick={() => updateStatus(order._id, 'pending')}
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
-                            >
-                              <RefreshCw className="h-3.5 w-3.5 text-amber-400" />
-                              Reset to Pending
-                            </button>
-                          )}
+                          <button
+                            onClick={() => updateStatus(order._id, 'pending')}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 text-amber-400" />
+                            Reset to Pending
+                          </button>
 
                           {order.status !== 'expired' && (
                             <button
@@ -337,7 +338,25 @@ export default function OrdersPage() {
                               className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
                             >
                               <XCircle className="h-3.5 w-3.5 text-red-400" />
-                              Mark as Expired
+                              Expire Order
+                            </button>
+                          )}
+
+                          <button
+                            onClick={() => updateStatus(order._id, '', 'recheck')}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 text-blue-400" />
+                            Recheck Blockchain
+                          </button>
+
+                          {(order.status === 'confirmed' || order.status === 'manual' || order.status === 'delivered') && (
+                            <button
+                              onClick={() => updateStatus(order._id, '', 'refund')}
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 transition-colors flex items-center gap-2.5 text-zinc-300"
+                            >
+                              <XCircle className="h-3.5 w-3.5 text-red-400" />
+                              Refund
                             </button>
                           )}
 

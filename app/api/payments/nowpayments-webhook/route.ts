@@ -1,16 +1,13 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Order from '@/models/Order';
-import Product from '@/models/Product';
+import Payment from '@/models/Payment';
+import { processOrderDelivery } from '@/lib/delivery';
 import crypto from 'crypto';
 
 function sortObject(obj: any): any {
-  if (typeof obj !== 'object' || obj === null) {
-    return obj;
-  }
-  if (Array.isArray(obj)) {
-    return obj.map(sortObject);
-  }
+  if (typeof obj !== 'object' || obj === null) return obj;
+  if (Array.isArray(obj)) return obj.map(sortObject);
   const sortedKeys = Object.keys(obj).sort();
   const result: any = {};
   for (const key of sortedKeys) {
@@ -19,217 +16,253 @@ function sortObject(obj: any): any {
   return result;
 }
 
-async function processOrderDelivery(order: any) {
-  const orderId = typeof order === 'string' ? order : String(order._id || order.id);
-  
-  let freshOrder = await Order.findById(orderId);
-  if (!freshOrder) {
-    console.error(`processOrderDelivery: Order not found for id=${orderId}`);
-    return [];
-  }
-
-  if (Array.isArray(freshOrder.deliveredSerials) && freshOrder.deliveredSerials.length > 0) {
-    console.log(`processOrderDelivery: Order ${orderId} already has delivered serials:`, freshOrder.deliveredSerials);
-    return freshOrder.deliveredSerials;
-  }
-
-  const product = await Product.findById(freshOrder.productId);
-  if (!product) {
-    console.error(`processOrderDelivery: Product not found for id=${freshOrder.productId}`);
-    return [];
-  }
-
-  const availableSerials = Array.isArray(product.serials) ? product.serials : [];
-  const quantity = freshOrder.quantity || 1;
-
-  console.log(`processOrderDelivery: product.serials=`, availableSerials);
-  console.log(`processOrderDelivery: quantity needed=`, quantity);
-
-  if (availableSerials.length < quantity) {
-    console.warn(`processOrderDelivery: Not enough serials for order ${orderId}. Have ${availableSerials.length}, need ${quantity}`);
-    return [];
-  }
-
-  const deliveredSerials = availableSerials.slice(0, quantity);
-  const remainingSerials = availableSerials.slice(quantity);
-
-  console.log(`processOrderDelivery: Will deliver:`, deliveredSerials);
-  console.log(`processOrderDelivery: Will remain:`, remainingSerials);
-
-  product.serials = remainingSerials;
-  product.stock = remainingSerials.length;
-  product.markModified('serials');
-  await product.save();
-
-  freshOrder.deliveredSerials = deliveredSerials;
-  freshOrder.markModified('deliveredSerials');
-  await freshOrder.save();
-
-  console.log(`processOrderDelivery: SUCCESS - Delivered ${quantity} serials for order ${orderId}:`, deliveredSerials);
-  console.log(`processOrderDelivery: Remaining stock for product ${product._id}: ${product.stock}`);
-
-  return deliveredSerials;
+function truncate(str: string, n: number): string {
+  return str.length <= n ? str : str.slice(0, n) + '...';
 }
 
-async function deductStock(productId: string, quantity: number) {
-  const product = await Product.findById(productId);
-  if (!product) {
-    console.warn(`deductStock: Product not found for id=${productId}`);
-    return;
-  }
-  const newStock = Math.max(0, product.stock - quantity);
-  await Product.findByIdAndUpdate(productId, { $set: { stock: newStock } });
-  console.log(`deductStock: Reduced stock from ${product.stock} to ${newStock} for product ${productId}`);
+async function logIpnEvent(payment: any, event: string, body: any, sig: string, order: any) {
+  console.log(`[IPN] ${event} | payment_id=${payment?.payment_id || '?'} | order_id=${order?._id || '?'} | tx=${body.txid || 'none'}`);
 }
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
+
   try {
-    console.log('NOWPayments webhook: Received request');
+    console.log('[IPN] Webhook received');
 
     const rawBody = await req.text();
-    console.log('NOWPayments webhook: Raw body received');
-
     const sig = req.headers.get('x-nowpayments-sig');
-    console.log('NOWPayments webhook: Signature header:', sig ? 'present' : 'missing');
 
     if (!sig) {
+      console.warn('[IPN] Missing signature header');
       return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
     }
 
     const secret = process.env.NOWPAYMENTS_IPN_SECRET;
-    console.log('NOWPayments webhook: Secret loaded:', secret ? 'yes (' + secret.length + ' chars)' : 'no');
-
     if (!secret) {
-      console.error('NOWPayments webhook: NOWPAYMENTS_IPN_SECRET environment variable is not set');
+      console.error('[IPN] NOWPAYMENTS_IPN_SECRET not configured');
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
 
     let body: any;
     try {
       body = JSON.parse(rawBody);
-      console.log('NOWPayments webhook: JSON parsed successfully');
-    } catch (parseErr: any) {
-      console.error('NOWPayments webhook: JSON parse error:', parseErr.message, 'Raw body:', rawBody);
+    } catch {
+      console.warn('[IPN] Invalid JSON body');
       return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
     }
 
     const sortedBody = sortObject(body);
     const sortedBodyStr = JSON.stringify(sortedBody);
 
-    console.log('NOWPayments webhook: Sorted body for HMAC:', sortedBodyStr);
-
     const hmac = crypto
       .createHmac('sha512', secret.trim())
       .update(sortedBodyStr)
       .digest('hex');
 
-    console.log('NOWPayments webhook: Calculated HMAC:', hmac);
-    console.log('NOWPayments webhook: Received signature:', sig);
-    console.log('NOWPayments webhook: Signatures match:', hmac === sig);
-
     if (hmac !== sig) {
-      console.warn('NOWPayments webhook: Invalid signature - calculated:', hmac, 'received:', sig);
+      console.warn('[IPN] Invalid HMAC signature');
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
 
-    console.log('NOWPayments webhook: Signature verified successfully');
+    console.log('[IPN] Signature verified successfully');
 
     await dbConnect();
-    console.log('NOWPayments webhook: Database connected');
 
     const paymentStatus = body.payment_status;
-    const paymentId = body.payment_id ? String(body.payment_id) : null;
+    const nowpaymentsPaymentId = body.payment_id ? String(body.payment_id) : null;
     const orderId = body.order_id;
+    const txHash = body.txid || null;
+    const confirmations = parseInt(body.confirmations || '0', 10);
+    const actuallyPaid = body.actually_paid ? parseFloat(body.actually_paid) : undefined;
+    const payAmount = body.pay_amount ? parseFloat(body.pay_amount) : undefined;
 
-    console.log('NOWPayments webhook: payment_status:', paymentStatus);
-    console.log('NOWPayments webhook: payment_id:', paymentId);
-    console.log('NOWPayments webhook: order_id:', orderId);
+    console.log(`[IPN] status=${paymentStatus} payment_id=${nowpaymentsPaymentId} order_id=${orderId} tx=${txHash} confs=${confirmations}`);
 
-    if (!paymentStatus || !paymentId) {
+    if (!paymentStatus || !nowpaymentsPaymentId) {
+      console.warn('[IPN] Missing payment_status or payment_id in webhook payload');
       return NextResponse.json({ error: 'Missing payment data' }, { status: 400 });
     }
 
-    let order = null;
-    if (orderId) {
-      console.log('NOWPayments webhook: Looking up order by _id:', orderId);
+    // ── Find payment ────────────────────────────────────────────────────
+    let payment = await Payment.findOne({ nowpayments_payment_id: nowpaymentsPaymentId });
+    if (!payment) {
+      if (orderId) {
+        const order = await Order.findById(orderId);
+        if (order) {
+          payment = await Payment.findOne({ order_id: order._id });
+        }
+      }
+    }
+    if (!payment) {
+      // Try by invoice_id/order_id
+      if (orderId) {
+        payment = await Payment.findOne({ invoice_id: orderId });
+      }
+    }
+
+    let order: any = null;
+    if (payment) {
+      order = await Order.findById(payment.order_id);
+    } else if (orderId) {
       order = await Order.findById(orderId);
     }
-    if (!order) {
-      console.log('NOWPayments webhook: Looking up order by nowPaymentId:', paymentId);
-      order = await Order.findOne({ nowPaymentId: paymentId });
-    }
-    if (!order) {
-      console.warn(`NOWPayments webhook: order not found for payment_id=${paymentId}, order_id=${orderId}`);
+
+    if (!payment && !order) {
+      console.warn(`[IPN] No matching payment or order found for payment_id=${nowpaymentsPaymentId}, order_id=${orderId}`);
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    console.log('NOWPayments webhook: Found order:', order._id, 'current status:', order.status);
+    if (!payment && order) {
+      // Create Payment doc if it doesn't exist (recovery path)
+      payment = await Payment.create({
+        payment_id: order.paymentId || `INV-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+        order_id: order._id,
+        invoice_id: order.paymentId,
+        pay_address: order.payAddress || order.walletAddress,
+        pay_amount: order.payAmount || order.ltcAmount,
+        pay_currency: 'ltc',
+        price_amount: order.usdAmount,
+        price_currency: 'usd',
+        payment_status: 'pending',
+        nowpayments_payment_id: nowpaymentsPaymentId,
+        created_at: new Date(),
+        last_checked_at: new Date(),
+      });
+      console.log(`[IPN] Created missing Payment doc for order ${order._id}`);
+    }
 
-    if (['confirmed', 'delivered', 'manual'].includes(order.status) && order.deliveredSerials?.length > 0) {
-      console.log('NOWPayments webhook: Order already processed and delivered, skipping duplicate webhook');
+    // ── Duplicate detection ─────────────────────────────────────────────
+    if (payment && payment.ipn_processed && txHash && payment.tx_hash === txHash) {
+      payment.duplicate_ipn_count = (payment.duplicate_ipn_count || 0) + 1;
+      await payment.save();
+      console.log(`[IPN] Duplicate webhook for tx=${txHash}, count=${payment.duplicate_ipn_count}`);
+      await logIpnEvent(payment, 'DUPLICATE_SKIPPED', body, sig, order);
       return NextResponse.json({ success: true, message: 'Already processed' });
     }
 
-    switch (paymentStatus) {
-      case 'waiting':
-        if (order.status === 'pending') break;
-        order.status = 'pending';
-        console.log('NOWPayments webhook: Setting order status to pending');
-        break;
+    await logIpnEvent(payment, 'PROCESSING', body, sig, order);
 
-      case 'confirming':
-      case 'confirmed':
-      case 'finished':
-        if (['confirmed', 'delivered', 'manual'].includes(order.status) && order.deliveredSerials?.length > 0) {
-          console.log('NOWPayments webhook: Order already confirmed with delivered serials, skipping');
-          break;
-        }
+    // ── Build update payload ────────────────────────────────────────────
+    const paymentUpdate: Record<string, any> = {
+      provider_response: body,
+      last_checked_at: new Date(),
+    };
 
-        order.status = 'confirmed';
-        order.paymentStatus = 'paid';
-        if (body.pay_amount !== undefined && body.pay_amount !== null) {
-          order.payAmount = parseFloat(body.pay_amount);
-          order.ltcAmount = parseFloat(body.pay_amount);
-        }
-        if (body.pay_address) {
-          order.payAddress = body.pay_address;
-          order.walletAddress = body.pay_address;
-        }
-        if (body.txid) {
-          order.txId = body.txid;
-          console.log('NOWPayments webhook: Setting txId:', body.txid);
-        }
+    const orderUpdate: Record<string, any> = {};
 
-        console.log(`NOWPayments webhook: Saving order status changes first...`);
-        await order.save();
-
-        console.log(`NOWPayments webhook: Treating status="${paymentStatus}" as confirmed/paid, processing delivery`);
-        
-        await processOrderDelivery(order);
-        break;
-
-      case 'failed':
-      case 'expired':
-        order.status = 'failed';
-        order.paymentStatus = 'unpaid';
-        console.log('NOWPayments webhook: Setting order status to failed');
-        break;
-
-      default:
-        console.warn(`NOWPayments webhook: unknown status "${paymentStatus}" for payment ${paymentId}`);
-        break;
+    if (txHash) {
+      paymentUpdate.tx_hash = txHash;
+      if (!payment?.tx_hash) {
+        orderUpdate.txId = txHash;
+      }
+    }
+    if (confirmations > 0) {
+      paymentUpdate.confirmation_count = confirmations;
+    }
+    if (actuallyPaid !== undefined) {
+      paymentUpdate.actually_paid = actuallyPaid;
+    }
+    if (payAmount !== undefined) {
+      paymentUpdate.paid_amount = payAmount;
     }
 
-    console.log('NOWPayments webhook: Saving order...');
-    await order.save();
-    console.log('NOWPayments webhook: Order saved successfully');
+    // ── Status mapping ──────────────────────────────────────────────────
+    let shouldDeliver = false;
+
+    switch (paymentStatus) {
+      case 'waiting': {
+        paymentUpdate.payment_status = 'waiting';
+        paymentUpdate.paid_at = new Date();
+        orderUpdate.status = 'detected';
+        orderUpdate.paymentStatus = 'unpaid';
+        break;
+      }
+      case 'confirming': {
+        paymentUpdate.payment_status = 'confirming';
+        paymentUpdate.confirmation_count = confirmations;
+        orderUpdate.status = 'detected';
+        break;
+      }
+      case 'confirmed':
+      case 'finished': {
+        paymentUpdate.payment_status = 'confirmed';
+        paymentUpdate.confirmed_at = new Date();
+        paymentUpdate.tx_hash = txHash;
+        paymentUpdate.ipn_processed = true;
+        paymentUpdate.ipn_processed_at = new Date();
+        orderUpdate.status = 'confirmed';
+        orderUpdate.paymentStatus = 'paid';
+        if (txHash) orderUpdate.txId = txHash;
+        shouldDeliver = true;
+        break;
+      }
+      case 'expired': {
+        paymentUpdate.payment_status = 'expired';
+        paymentUpdate.expired_at = new Date();
+        orderUpdate.status = 'expired';
+        orderUpdate.paymentStatus = 'unpaid';
+        break;
+      }
+      case 'failed': {
+        paymentUpdate.payment_status = 'failed';
+        paymentUpdate.expired_at = new Date();
+        orderUpdate.status = 'failed';
+        orderUpdate.paymentStatus = 'unpaid';
+        break;
+      }
+      default: {
+        console.warn(`[IPN] Unknown status: ${paymentStatus}`);
+        break;
+      }
+    }
+
+    // ── Save to Payment model ───────────────────────────────────────────
+    if (payment) {
+      await Payment.findByIdAndUpdate(payment._id, { $set: paymentUpdate });
+      console.log(`[IPN] Payment ${payment._id} updated to ${paymentUpdate.payment_status || 'unchanged'}`);
+    }
+
+    // ── Save to Order model ─────────────────────────────────────────────
+    if (order && Object.keys(orderUpdate).length > 0) {
+      const prevStatus = order.status;
+      await Order.findByIdAndUpdate(order._id, { $set: orderUpdate });
+      console.log(`[IPN] Order ${order._id} status: ${prevStatus} -> ${orderUpdate.status || 'unchanged'}`);
+
+      if (prevStatus === 'confirmed' && orderUpdate.status === 'confirmed') {
+        console.log(`[IPN] Order ${order._id} was already confirmed, skipping delivery`);
+        shouldDeliver = false;
+      }
+    }
+
+    if (shouldDeliver && payment) {
+      console.log(`[IPN] Triggering delivery for order ${payment.order_id}`);
+      try {
+        const serials = await processOrderDelivery(String(payment.order_id));
+        if (serials.length > 0) {
+          // Update payment status to delivered
+          await Payment.findByIdAndUpdate(payment._id, {
+            $set: {
+              payment_status: 'delivered',
+              delivered_at: new Date(),
+              last_checked_at: new Date(),
+            },
+          });
+          await Order.findByIdAndUpdate(payment.order_id, {
+            $set: { status: 'delivered' },
+          });
+        }
+      } catch (delErr: any) {
+        console.error(`[IPN] Delivery failed for order ${payment.order_id}:`, delErr.message);
+      }
+    }
+
+    const elapsed = Date.now() - startTime;
+    console.log(`[IPN] Completed in ${elapsed}ms`);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('NOWPayments webhook FATAL ERROR:');
-    console.error('  Message:', error?.message || String(error));
-    console.error('  Stack:', error?.stack || 'No stack trace');
-    console.error('  Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('[IPN] FATAL ERROR:', error?.message || String(error));
     return NextResponse.json(
       { success: false, error: error?.message || 'Internal server error' },
       { status: 500 }
